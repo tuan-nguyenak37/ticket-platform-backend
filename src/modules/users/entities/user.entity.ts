@@ -11,7 +11,7 @@ import { UserRole } from './enums/user-role.enum';
 import { UserStatus } from './enums/user-status.enum';
 import { generateId } from '../../../common/utils/generateId';
 
-@Entity('users')
+@Entity('Users')
 export class User {
   @PrimaryColumn({
     type: 'varchar',
