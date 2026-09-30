@@ -1,208 +1,127 @@
-# Tài Liệu API - Xác Thực & Người Dùng (Auth & User API)
+# API xác thực
 
-Luồng login, refresh, logout và phân quyền Users hiện tại được mô tả tại [JWT và phiên đăng nhập](./auth-session-updates.md).
+Base URL ví dụ: `http://localhost:7000/api`. Xem [phiên đăng nhập](./auth-session-updates.md) và [phân quyền](./authorization.md) để biết cách kiểm tra token/quyền.
 
-Tài liệu chi tiết kỹ thuật cho các API liên quan đến Authentication và User thuộc hệ thống Backend Ticket Platform.
+## Định dạng phản hồi
 
----
-
-## 1. Thông Tin Chung (General Information)
-
-* **Base URL**: `http://localhost:7000/api`
-* **Version**: `v1`
-* **Content-Type**: `application/json`
-* **Authentication**: Public (chưa yêu cầu Bearer Token đối với các API đăng ký/đăng nhập)
-
----
-
-## 2. Định Dạng Phản Hồi Chuẩn (Standard Response Format)
-
-Hệ thống sử dụng `GlobalResponseInterceptor` và `GlobalExceptionFilter` để chuẩn hóa tất cả các phản hồi HTTP.
-
-### 2.1. Phản hồi thành công (Success Response Structure)
-```json
-{
-  "success": true,
-  "statusCode": 200 | 201,
-  "message": "Request successful",
-  "data": { ... },
-  "timestamp": "2026-09-28T11:26:35.854Z"
-}
-```
-
-### 2.2. Phản hồi lỗi (Error Response Structure)
-```json
-{
-  "success": false,
-  "statusCode": 400 | 401 | 403 | 404 | 409 | 500,
-  "message": "Thông báo lỗi chi tiết hoặc mảng các lỗi validation",
-  "path": "/api/...",
-  "timestamp": "2026-09-28T11:26:47.940Z"
-}
-```
-
----
-
-## 3. Danh Sách Endpoint (Endpoints)
-
-| Phương thức | Endpoint | Quyền truy cập | Mô tả |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/auth/register` | Public | Đăng ký tài khoản người dùng mới |
-
----
-
-## 4. Chi Tiết API
-
-### 4.1. Đăng ký tài khoản người dùng mới (User Registration)
-
-Tạo tài khoản người dùng mới vào hệ thống. Mật khẩu được mã hóa tự động bằng thuật toán băm `bcrypt` với `saltRounds = 10`. `user_id` tiền tố `user_` được tự động sinh.
-
-* **Endpoint**: `/api/auth/register`
-* **Method**: `POST`
-* **Auth Required**: `No`
-
-#### Headers
-| Header | Kiểu | Bắt buộc | Giá trị |
-| :--- | :--- | :--- | :--- |
-| `Content-Type` | `string` | **Có** | `application/json` |
-
-#### Request Body Schema (`RegisterDto`)
-
-| Trường | Kiểu dữ liệu | Bắt buộc | Ràng buộc validation | Mô tả |
-| :--- | :--- | :--- | :--- | :--- |
-| `email` | `string` | **Có** | Email hợp lệ (`@IsEmail`), không để trống (`@IsNotEmpty`). Tự động trim và chuyển chữ thường. | Email định danh duy nhất của tài khoản. |
-| `password` | `string` | **Có** | Độ dài từ 6 đến 32 ký tự (`@MinLength(6)`, `@MaxLength(32)`). | Mật khẩu tài khoản (sẽ được hash trước khi lưu). |
-| `fullName` | `string` | Không | Tối đa 100 ký tự (`@MaxLength(100)`). | Họ và tên hiển thị của người dùng. |
-
-#### Request Body Ví dụ
-```json
-{
-  "email": "user@example.com",
-  "password": "password123",
-  "fullName": "Nguyen Van A"
-}
-```
-
----
-
-#### Response Codes & Ví dụ
-
-##### `201 Created` - Đăng ký thành công
-Trả về thông tin tài khoản vừa tạo (đã loại bỏ trường `password` để đảm bảo an toàn).
+Thành công: kết quả endpoint nằm trong `data`.
 
 ```json
 {
   "success": true,
-  "statusCode": 201,
+  "statusCode": 200,
   "message": "Request successful",
-  "data": {
-    "user_id": "user__ubcPu-bej8lYfed1",
-    "email": "user@example.com",
-    "phone": null,
-    "fullName": "Nguyen Van A",
-    "avatarUrl": null,
-    "role": "user",
-    "status": "active",
-    "emailVerified": false,
-    "phoneVerified": false,
-    "identityVerified": false,
-    "reputationScore": 0,
-    "successfulSales": 0,
-    "successfulBuys": 0,
-    "disputeCount": 0,
-    "lastLoginAt": null,
-    "createdAt": "2026-09-28T11:26:35.696Z",
-    "updatedAt": "2026-09-28T11:26:35.696Z"
-  },
-  "timestamp": "2026-09-28T11:26:35.854Z"
+  "data": {},
+  "timestamp": "2026-09-30T00:00:00.000Z"
 }
 ```
 
-##### `400 Bad Request` - Dữ liệu đầu vào không hợp lệ (Validation Error)
-Khi email sai định dạng, mật khẩu ngắn hơn 6 ký tự hoặc có trường không được phép (theo `whitelist` / `forbidNonWhitelisted`).
+Lỗi: `message` có thể là chuỗi hoặc mảng thông báo validation; không có `data`.
 
 ```json
 {
   "success": false,
   "statusCode": 400,
-  "message": [
-    "Email không hợp lệ",
-    "Mật khẩu phải có tối thiểu 6 ký tự"
-  ],
-  "path": "/api/auth/register",
-  "timestamp": "2026-09-28T11:26:56.164Z"
+  "message": ["email must be an email"],
+  "path": "/api/auth/login",
+  "timestamp": "2026-09-30T00:00:00.000Z"
 }
 ```
 
-##### `409 Conflict` - Trùng lặp Email
-Khi email đăng ký đã tồn tại trong cơ sở dữ liệu.
+Các timestamp và giá trị mẫu chỉ mang tính minh họa. Header `X-Request-Id` dùng để đối chiếu nhật ký, không phải một trường trong JSON.
+
+## Endpoint
+
+| Method | Path | Chính sách | Thành công |
+| --- | --- | --- | --- |
+| POST | /auth/register | Public | 201, thông tin user |
+| POST | /auth/login | Public | 200, accessToken và user; refresh cookie |
+| POST | /auth/refresh | Public ở lớp access guard; bắt buộc refresh cookie hợp lệ | 200, accessToken và user; refresh cookie mới |
+| POST | /auth/logout | Authenticated | 200, thông báo đăng xuất |
+
+### Đăng ký
 
 ```json
 {
-  "success": false,
-  "statusCode": 409,
-  "message": "Email đã tồn tại trên hệ thống",
-  "path": "/api/auth/register",
-  "timestamp": "2026-09-28T11:26:47.940Z"
+  "email": "person@example.com",
+  "password": "ExamplePass123",
+  "fullName": "Nguyễn Văn A"
 }
 ```
 
----
+| Trường | Yêu cầu |
+| --- | --- |
+| email | Bắt buộc, đúng định dạng email; trim và chuyển chữ thường |
+| password | Bắt buộc, chuỗi dài 6–32 ký tự; không trim |
+| fullName | Không bắt buộc; chuỗi tối đa 100 ký tự; bỏ trống trường thì lưu null |
 
-#### Code Mẫu Gọi API (Client Examples)
+Password được băm bằng bcrypt với cost 10. Role luôn là USER; client không được gửi role, status hoặc trường ngoài DTO. Response dùng [UserResponseDto](./users-api.md#dữ-liệu-user-trả-về), không trả password hash hoặc tokenVersion.
 
-##### cURL
-```bash
-curl -X POST http://localhost:7000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "password123",
-    "fullName": "Nguyen Van A"
-  }'
+Mã lỗi: 400 khi dữ liệu không hợp lệ; 409 khi email đã tồn tại hoặc có xung đột unique trong database. Tài khoản có email đang thuộc bản ghi deleted vẫn không thể đăng ký lại với email đó.
+
+### Đăng nhập
+
+```json
+{
+  "email": " Person@Example.com ",
+  "password": "ExamplePass123"
+}
 ```
 
-##### JavaScript / TypeScript (Fetch API)
-```typescript
-const register = async (data: { email: string; password: string; fullName?: string }) => {
-  const response = await fetch('http://localhost:7000/api/auth/register', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
+Email được chuẩn hóa như đăng ký. Password phải là chuỗi không rỗng. User phải có trạng thái active.
 
-  const result = await response.json();
-  if (!response.ok) {
-    throw new Error(result.message || 'Đăng ký thất bại');
+Dữ liệu thành công:
+
+```json
+{
+  "accessToken": "<JWT access token>",
+  "user": {
+    "user_id": "<user_id>",
+    "email": "person@example.com",
+    "role": "user"
   }
-  return result.data;
-};
+}
 ```
 
----
+Phần user được rút gọn trong ví dụ; danh sách trường đầy đủ nằm trong tài liệu Users. Refresh token chỉ được gửi qua `Set-Cookie`, không có trong JSON.
 
-## 5. Cấu Trúc Bảng Dữ Liệu `Users` (Data Model Reference)
+- 400: thiếu trường, sai kiểu/định dạng hoặc gửi thêm trường không được phép.
+- 401: email không tồn tại, mật khẩu sai hoặc trạng thái tài khoản không phải active.
+- Login thành công thay thế phiên cũ của tài khoản.
 
-| Cột | Kiểu DB (PostgreSQL) | TypeORM Decorator | Nullable | Mặc định | Ghi chú |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `user_id` | `VARCHAR(40)` | `@PrimaryColumn` | `NO` | Tự sinh | Format `user_` + nanoid |
-| `email` | `VARCHAR(255)` | `@Column({ unique: true })` | `NO` | - | Email duy nhất |
-| `phone` | `VARCHAR(20)` | `@Column({ unique: true })` | `YES` | `null` | Số điện thoại duy nhất |
-| `password` | `VARCHAR(255)` | `@Column` | `NO` | - | Đã băm với bcrypt |
-| `fullName` | `VARCHAR(100)` | `@Column` | `YES` | `null` | Họ tên người dùng |
-| `avatarUrl` | `TEXT` | `@Column` | `YES` | `null` | Link ảnh đại diện |
-| `role` | `ENUM ('admin', 'user', 'moderator')` | `@Column` | `NO` | `'user'` | Vai trò tài khoản |
-| `status` | `ENUM ('active', 'suspended', 'banned', 'deleted')` | `@Column` | `NO` | `'active'` | Trạng thái tài khoản |
-| `tokenVersion` | `INTEGER` | `@Column` | `NO` | `0` | Phiên bản phiên đăng nhập; không trả trong response user |
-| `emailVerified`| `BOOLEAN` | `@Column` | `NO` | `false` | Xác thực email |
-| `phoneVerified`| `BOOLEAN` | `@Column` | `NO` | `false` | Xác thực SĐT |
-| `identityVerified` | `BOOLEAN` | `@Column` | `NO` | `false` | Xác thực danh tính (KYC) |
-| `reputationScore` | `INT` | `@Column` | `NO` | `0` | Điểm uy tín |
-| `successfulSales` | `INT` | `@Column` | `NO` | `0` | Số vé bán thành công |
-| `successfulBuys` | `INT` | `@Column` | `NO` | `0` | Số vé mua thành công |
-| `disputeCount` | `INT` | `@Column` | `NO` | `0` | Số vụ tranh chấp |
-| `lastLoginAt` | `TIMESTAMPTZ` | `@Column` | `YES` | `null` | Lần đăng nhập cuối |
-| `createdAt` | `TIMESTAMPTZ` | `@CreateDateColumn` | `NO` | `CURRENT_TIMESTAMP` | Thời điểm tạo |
-| `updatedAt` | `TIMESTAMPTZ` | `@UpdateDateColumn` | `NO` | `CURRENT_TIMESTAMP` | Thời điểm cập nhật |
+### Refresh
+
+Gửi `POST /api/auth/refresh` với cookie `refresh_token`. Body có thể để trống. Không hỗ trợ lấy refresh token từ body.
+
+Server kiểm tra chữ ký, thời hạn, loại token, user, trạng thái và phiên bản phiên. Thành công trả access token mới trong `data.accessToken`, thông tin user và thay refresh cookie.
+
+Cookie thiếu, sai, hết hạn, đã sử dụng hoặc phiên bị thu hồi trả 401. Client cần tuần tự hóa refresh; khi hai yêu cầu cùng dùng một token, tối đa một yêu cầu đổi phiên thành công.
+
+### Logout
+
+Gửi `POST /api/auth/logout` với Bearer access token hợp lệ. Server thu hồi phiên rồi xóa refresh cookie tại `/api/auth`.
+
+```json
+{
+  "message": "Đăng xuất thành công"
+}
+```
+
+Đây là nội dung `data` trong response chuẩn. Token thiếu/hết hạn/bị thu hồi trả 401; logout không tự dùng refresh cookie để thay access token.
+
+## Ví dụ sử dụng cookie jar
+
+Các lệnh sau dành cho shell hỗ trợ cú pháp cURL này; thay thông tin mẫu bằng tài khoản test của bạn.
+
+```bash
+curl -c cookies.txt -X POST http://localhost:7000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"person@example.com","password":"ExamplePass123"}'
+
+curl -b cookies.txt -c cookies.txt -X POST http://localhost:7000/api/auth/refresh
+
+curl -b cookies.txt -c cookies.txt -X POST http://localhost:7000/api/auth/logout \
+  -H "Authorization: Bearer <accessToken mới nhất>"
+```
+
+Postman có thể lưu và gửi cookie tự động. Sau refresh cần cập nhật Bearer access token. Với trình duyệt gọi khác origin, cần cấu hình CORS/credentials tương ứng; không suy ra backend đã bật CORS từ ví dụ này.

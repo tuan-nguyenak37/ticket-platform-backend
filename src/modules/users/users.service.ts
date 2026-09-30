@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -10,8 +11,15 @@ import { User } from './entities/user.entity';
 import { UserStatus } from './entities/enums/user-status.enum';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { hashPassword } from '../../common/utils/password.util';
+import {
+  hashPassword,
+  comparePassword,
+} from '../../common/utils/password.util';
 import { publicUser } from '../../common/utils/public-user';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { assertUserAdministrator } from '../auth/authorization/users.policy';
+import type { Principal } from '../auth/authorization/principal';
+import { UserRole } from './entities/enums/user-role.enum';
 
 @Injectable()
 export class UsersService {
@@ -29,6 +37,7 @@ export class UsersService {
       email,
       password: await hashPassword(dto.password),
       fullName: dto.fullName ?? null,
+      role: UserRole.USER,
     });
     try {
       return await this.userRepository.save(user);
@@ -47,7 +56,13 @@ export class UsersService {
     return this.userRepository.findOne({ where: { user_id: id } });
   }
 
-  async findAll() {
+  async createForAdmin(actor: Principal, dto: CreateUserDto) {
+    assertUserAdministrator(actor);
+    return publicUser(await this.create(dto));
+  }
+
+  async findAll(actor: Principal) {
+    assertUserAdministrator(actor);
     const users = await this.userRepository.find({
       where: { status: Not(UserStatus.DELETED) },
       order: { createdAt: 'DESC', user_id: 'ASC' },
@@ -56,41 +71,75 @@ export class UsersService {
     return users.map(publicUser);
   }
 
-  async findOne(id: string) {
+  async findOne(actor: Principal, id: string) {
+    assertUserAdministrator(actor);
     return publicUser(await this.requireUser(id));
   }
 
-  async update(id: string, dto: UpdateUserDto) {
+  async update(actor: Principal, id: string, dto: UpdateUserDto) {
+    assertUserAdministrator(actor);
     await this.requireUser(id);
-    const changes: Partial<User> = {};
-    if (dto.email !== undefined) changes.email = dto.email.trim().toLowerCase();
-    if (dto.fullName !== undefined) changes.fullName = dto.fullName;
-    if (dto.password !== undefined)
-      changes.password = await hashPassword(dto.password);
-    if (Object.keys(changes).length === 0) return this.findOne(id);
-    try {
-      // Invalidate existing tokens when account information changes.
-      await this.userRepository.update(
-        { user_id: id, status: Not(UserStatus.DELETED) },
-        { ...changes, tokenVersion: () => '"tokenVersion" + 1' },
-      );
-    } catch (error) {
-      this.rethrowDatabaseError(error);
-    }
-    return this.findOne(id);
-  }
-
-  async remove(id: string) {
     const result = await this.userRepository.update(
       { user_id: id, status: Not(UserStatus.DELETED) },
-      { status: UserStatus.DELETED, tokenVersion: () => '"tokenVersion" + 1' },
+      { fullName: dto.fullName },
     );
-    if (!result.affected)
+    if (result.affected !== 1)
       throw new NotFoundException('Không tìm thấy người dùng');
-    return { user_id: id, deleted: true };
+    return this.findOne(actor, id);
   }
 
-  async rotateTokenVersion(user: User, login = false): Promise<number> {
+  async getProfile(actor: Principal) {
+    const user = await this.userRepository.findOne({
+      where: this.selfScope(actor),
+    });
+    if (!user) throw new NotFoundException('Không tìm thấy hồ sơ');
+    return publicUser(user);
+  }
+
+  async updateProfile(actor: Principal, dto: UpdateUserDto) {
+    const result = await this.userRepository.update(this.selfScope(actor), {
+      fullName: dto.fullName,
+    });
+    if (result.affected !== 1)
+      throw new ConflictException('Tài khoản đã thay đổi, hãy đăng nhập lại');
+    return this.getProfile(actor);
+  }
+
+  async changePassword(actor: Principal, dto: ChangePasswordDto) {
+    const user = await this.userRepository.findOne({
+      where: this.selfScope(actor),
+    });
+    if (!user)
+      throw new ConflictException('Tài khoản đã thay đổi, hãy đăng nhập lại');
+    if (!(await comparePassword(dto.currentPassword, user.password))) {
+      throw new BadRequestException('Mật khẩu hiện tại không đúng');
+    }
+    if (dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException('Mật khẩu mới phải khác mật khẩu hiện tại');
+    }
+    const password = await hashPassword(dto.newPassword);
+    const result = await this.userRepository.update(
+      { ...this.selfScope(actor), password: user.password },
+      { password, tokenVersion: () => '"tokenVersion" + 1' },
+    );
+    if (result.affected !== 1)
+      throw new ConflictException('Tài khoản đã thay đổi, hãy thử lại');
+    return { message: 'Đổi mật khẩu thành công, hãy đăng nhập lại' };
+  }
+
+  private selfScope(actor: Principal) {
+    if (actor.status !== UserStatus.ACTIVE) throw new UnauthorizedException();
+    return {
+      user_id: actor.user_id,
+      status: UserStatus.ACTIVE,
+      tokenVersion: actor.tokenVersion,
+    };
+  }
+
+  async rotateTokenVersion(
+    user: Pick<User, 'user_id' | 'tokenVersion'>,
+    login = false,
+  ): Promise<number> {
     const tokenVersion = user.tokenVersion + 1;
     const result = await this.userRepository.update(
       {

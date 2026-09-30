@@ -8,6 +8,7 @@ import { UserStatus } from '../users/entities/enums/user-status.enum';
 import { LoginDto } from './dto/login-auth.dto';
 import { TokenService } from './jwt/token.service';
 import { JwtPayload } from './jwt/jwt.interface';
+import type { Principal } from './authorization/principal';
 
 @Injectable()
 export class AuthService {
@@ -47,7 +48,7 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
-  async logout(user: User) {
+  async logout(user: Principal) {
     await this.users.rotateTokenVersion(user);
     return { message: 'Đăng xuất thành công' };
   }

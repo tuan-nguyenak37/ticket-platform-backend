@@ -1,5 +1,12 @@
 import { Controller, Post, Body, HttpCode, Req, Res } from '@nestjs/common';
-import type { CookieOptions, Response } from 'express';
+import type { Response } from 'express';
+import { Authenticated, CurrentUser } from './authorization/access-policy';
+import type { Principal } from './authorization/principal';
+import {
+  REFRESH_COOKIE,
+  refreshCookieOptions,
+  clearRefreshCookie,
+} from './refresh-cookie';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/create-auth.dto';
 import { LoginDto } from './dto/login-auth.dto';
@@ -7,7 +14,6 @@ import { Public } from './jwt/public.decorator';
 import type { AuthenticatedRequest } from './jwt/access-token.guard';
 
 // Tên cookie chứa refresh token
-const REFRESH_COOKIE = 'refresh_token';
 
 @Controller('auth')
 export class AuthController {
@@ -48,29 +54,21 @@ export class AuthController {
   }
 
   @Post('logout')
+  @Authenticated()
   @HttpCode(200)
   async logout(
-    @Req() request: AuthenticatedRequest,
+    @CurrentUser() actor: Principal,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.authService.logout(request.user);
-    res.clearCookie(REFRESH_COOKIE, this.refreshCookieOptions());
+    const result = await this.authService.logout(actor);
+    clearRefreshCookie(res);
     return result;
-  }
-
-  private refreshCookieOptions(): CookieOptions {
-    return {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/api/auth',
-    };
   }
 
   private setRefreshCookie(res: Response, token: string) {
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
     res.cookie(REFRESH_COOKIE, token, {
-      ...this.refreshCookieOptions(),
+      ...refreshCookieOptions(),
       maxAge: sevenDaysMs, // 7 ngày, đồng bộ với JWT_REFRESH_EXPIRES
     });
   }

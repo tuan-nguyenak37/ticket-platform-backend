@@ -10,8 +10,15 @@ import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { UserStatus } from './entities/enums/user-status.enum';
 import { comparePassword } from '../../common/utils/password.util';
+import { UserRole } from './entities/enums/user-role.enum';
 
 describe('UsersService', () => {
+  const admin = {
+    user_id: 'admin',
+    role: UserRole.ADMIN,
+    status: UserStatus.ACTIVE,
+    tokenVersion: 0,
+  };
   let service: UsersService;
   const repo = {
     create: jest.fn(),
@@ -67,7 +74,7 @@ describe('UsersService', () => {
       password: 'hash',
       tokenVersion: 7,
     });
-    const user = await service.findOne('user_abc');
+    const user = await service.findOne(admin, 'user_abc');
     expect(repo.findOne).toHaveBeenCalledWith({
       where: { user_id: 'user_abc' },
     });
@@ -77,7 +84,9 @@ describe('UsersService', () => {
 
   it('returns 404 for a missing user', async () => {
     repo.findOne.mockResolvedValue(null);
-    await expect(service.findOne('missing')).rejects.toThrow(NotFoundException);
+    await expect(service.findOne(admin, 'missing')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
   it('rejects token rotation when another request has already rotated it', async () => {

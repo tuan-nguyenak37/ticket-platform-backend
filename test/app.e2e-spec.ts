@@ -1,4 +1,7 @@
 import { Test } from '@nestjs/testing';
+import { DiscoveryModule, DiscoveryService, Reflector } from '@nestjs/core';
+import { METHOD_METADATA } from '@nestjs/common/constants';
+import { resolvePolicy } from '../src/modules/auth/authorization/access-policy';
 import { INestApplication, Module } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { FindOperator } from 'typeorm';
@@ -102,7 +105,9 @@ describe('Application HTTP flows (repository in memory)', () => {
   };
 
   beforeAll(async () => {
-    const module = await Test.createTestingModule({ imports: [AppModule] })
+    const module = await Test.createTestingModule({
+      imports: [AppModule, DiscoveryModule],
+    })
       .overrideModule(DatabaseModule)
       .useModule(NoDatabaseModule)
       .overrideProvider(getRepositoryToken(User))
@@ -225,7 +230,7 @@ describe('Application HTTP flows (repository in memory)', () => {
       .post('/api/auth/logout')
       .auth(tokens.accessToken, { type: 'bearer' })
       .expect(200);
-    const headers = logout.headers as Record<string, string[]>;
+    const headers = logout.headers as unknown as Record<string, string[]>;
     expect(
       headers['set-cookie'].some(
         (cookie) =>
@@ -298,53 +303,210 @@ describe('Application HTTP flows (repository in memory)', () => {
       .expect(401);
   });
 
-  it('lets admins create, read, update and soft-delete users without exposing hashes', async () => {
-    const tokens = await adminLogin();
+  it('every application route has one effective access policy', () => {
+    const reflector = new Reflector();
+    const discovery = app.get(DiscoveryService);
+    for (const wrapper of discovery.getControllers()) {
+      if (!wrapper.metatype) continue;
+      const prototype = wrapper.metatype.prototype as object;
+      for (const descriptor of Object.values(
+        Object.getOwnPropertyDescriptors(prototype),
+      )) {
+        const handler: unknown = descriptor.value;
+        if (
+          typeof handler !== 'function' ||
+          !Reflect.hasMetadata(METHOD_METADATA, handler)
+        )
+          continue;
+        const policy = resolvePolicy(reflector, handler, wrapper.metatype);
+        expect(policy).toBeDefined();
+        expect(policy?.kind).not.toBe('invalid');
+      }
+    }
+  });
+
+  it.each([UserRole.USER, UserRole.MODERATOR, UserRole.ADMIN])(
+    'supports self-service and correct admin restrictions for %s',
+    async (role) => {
+      const owner = await register();
+      rows.get(owner.user_id)!.role = role;
+      const target = await register('other@example.com');
+      const tokens = await login();
+      const server = app.getHttpServer();
+      const me = await request(server)
+        .get('/api/users/me')
+        .auth(tokens.accessToken, { type: 'bearer' })
+        .expect(200);
+      expect(me.body).toMatchObject({ data: { user_id: owner.user_id } });
+      await request(server)
+        .patch('/api/users/me')
+        .auth(tokens.accessToken, { type: 'bearer' })
+        .send({ fullName: '  My name  ' })
+        .expect(200);
+      expect(rows.get(owner.user_id)!.fullName).toBe('My name');
+      expect(rows.get(target.user_id)!.fullName).toBeNull();
+      await request(server)
+        .get('/api/users/me')
+        .auth(tokens.accessToken, { type: 'bearer' })
+        .expect(200);
+      const status = role === UserRole.ADMIN ? 200 : 403;
+      await request(server)
+        .get('/api/users')
+        .auth(tokens.accessToken, { type: 'bearer' })
+        .expect(status);
+      await request(server)
+        .get('/api/users/' + target.user_id)
+        .auth(tokens.accessToken, { type: 'bearer' })
+        .expect(status);
+      await request(server)
+        .patch('/api/users/' + target.user_id)
+        .auth(tokens.accessToken, { type: 'bearer' })
+        .send({ fullName: 'Admin name' })
+        .expect(status);
+      await request(server)
+        .post('/api/users')
+        .auth(tokens.accessToken, { type: 'bearer' })
+        .send({ email: 'created@example.com', password: 'abcdef' })
+        .expect(role === UserRole.ADMIN ? 201 : 403);
+      await request(server)
+        .delete('/api/users/' + target.user_id)
+        .auth(tokens.accessToken, { type: 'bearer' })
+        .expect(404);
+      await request(server)
+        .patch('/api/users/me/password')
+        .auth(tokens.accessToken, { type: 'bearer' })
+        .send({ currentPassword: 'abcdef', newPassword: 'new-password' })
+        .expect(200);
+      await request(server)
+        .get('/api/users/me')
+        .auth(tokens.accessToken, { type: 'bearer' })
+        .expect(401);
+      await request(server)
+        .post('/api/auth/refresh')
+        .set('Cookie', tokens.refreshCookie)
+        .expect(401);
+      await request(server)
+        .post('/api/auth/login')
+        .send({ email: owner.email, password: 'new-password' })
+        .expect(200);
+    },
+  );
+
+  it('requires authentication on all user endpoints', async () => {
     const server = app.getHttpServer();
+    await request(server).get('/api/users/me').expect(401);
     await request(server)
-      .post('/api/users')
-      .auth(tokens.accessToken, { type: 'bearer' })
-      .send({})
-      .expect(400);
-    const created = await request(server)
-      .post('/api/users')
-      .auth(tokens.accessToken, { type: 'bearer' })
-      .send({ email: 'new@example.com', password: 'abcdef' })
-      .expect(201);
-    const user = (created.body as { data: UserResponse }).data;
-    expect(user).not.toHaveProperty('password');
-    const accountTokens = await login(user.email);
-    const updated = await request(server)
-      .patch('/api/users/' + user.user_id)
-      .auth(tokens.accessToken, { type: 'bearer' })
-      .send({ fullName: 'New name', password: 'changed123' })
-      .expect(200);
-    expect(updated.body).toMatchObject({ data: { fullName: 'New name' } });
-    await request(server)
-      .post('/api/auth/refresh')
-      .set('Cookie', accountTokens.refreshCookie)
+      .patch('/api/users/me')
+      .send({ fullName: 'Name' })
       .expect(401);
     await request(server)
-      .get('/api/users/' + user.user_id)
+      .patch('/api/users/me/password')
+      .send({ currentPassword: 'abcdef', newPassword: 'new-password' })
+      .expect(401);
+    await request(server).get('/api/users').expect(401);
+    await request(server).get('/api/users/other').expect(401);
+    await request(server)
+      .post('/api/users')
+      .send({ email: 'other@example.com', password: 'abcdef' })
+      .expect(401);
+    await request(server)
+      .patch('/api/users/other')
+      .send({ fullName: 'Name' })
+      .expect(401);
+  });
+
+  it('rejects protected fields and invalid names for both self and admin update', async () => {
+    const user = await register();
+    const tokens = await adminLogin();
+    for (const path of ['/api/users/me', '/api/users/' + user.user_id]) {
+      for (const field of [
+        'userId',
+        'user_id',
+        'role',
+        'status',
+        'email',
+        'password',
+        'emailVerified',
+        'reputationScore',
+      ]) {
+        await request(app.getHttpServer())
+          .patch(path)
+          .auth(tokens.accessToken, { type: 'bearer' })
+          .send({ fullName: 'Name', [field]: 'injected' })
+          .expect(400);
+      }
+      for (const fullName of ['', '   ', null, 12, 'x'.repeat(101)]) {
+        await request(app.getHttpServer())
+          .patch(path)
+          .auth(tokens.accessToken, { type: 'bearer' })
+          .send({ fullName })
+          .expect(400);
+      }
+    }
+    expect(rows.get(user.user_id)!.fullName).toBeNull();
+  });
+
+  it('does not change credentials on an incorrect or identical password', async () => {
+    const user = await register();
+    const tokens = await login();
+    const oldHash = rows.get(user.user_id)!.password;
+    for (const body of [
+      { currentPassword: 'wrong', newPassword: 'new-password' },
+      { currentPassword: 'abcdef', newPassword: 'abcdef' },
+      { currentPassword: 'abcdef', newPassword: 'short' },
+      { currentPassword: 'abcdef', newPassword: 'x'.repeat(33) },
+    ]) {
+      await request(app.getHttpServer())
+        .patch('/api/users/me/password')
+        .auth(tokens.accessToken, { type: 'bearer' })
+        .send(body)
+        .expect(400);
+    }
+    expect(rows.get(user.user_id)!.password).toBe(oldHash);
+    await request(app.getHttpServer())
+      .get('/api/users/me')
       .auth(tokens.accessToken, { type: 'bearer' })
       .expect(200);
-    const list = await request(server)
+  });
+
+  it('password change clears the refresh cookie and concurrent changes cannot overwrite each other', async () => {
+    await register();
+    const tokens = await login();
+    const responses = await Promise.all(
+      ['new-password-a', 'new-password-b'].map((newPassword) =>
+        request(app.getHttpServer())
+          .patch('/api/users/me/password')
+          .auth(tokens.accessToken, { type: 'bearer' })
+          .send({ currentPassword: 'abcdef', newPassword }),
+      ),
+    );
+    expect(responses.map((r) => r.status).sort()).toEqual([200, 409]);
+    const headers = responses.find((r) => r.status === 200)!
+      .headers as unknown as Record<string, string[]>;
+    expect(
+      headers['set-cookie'].some(
+        (c) => c.startsWith('refresh_token=;') && c.includes('Path=/api/auth;'),
+      ),
+    ).toBe(true);
+  });
+
+  it('uses the current database role and never serializes unexpected entity fields', async () => {
+    const user = await register();
+    rows.get(user.user_id)!.role = UserRole.ADMIN;
+    Object.assign(rows.get(user.user_id)!, {
+      privateFutureField: 'private-value',
+    });
+    const tokens = await login();
+    const response = await request(app.getHttpServer())
+      .get('/api/users/me')
+      .auth(tokens.accessToken, { type: 'bearer' })
+      .expect(200);
+    expect(response.body).not.toHaveProperty('data.privateFutureField');
+    expect(response.body).not.toHaveProperty('data.password');
+    rows.get(user.user_id)!.role = UserRole.USER;
+    await request(app.getHttpServer())
       .get('/api/users')
       .auth(tokens.accessToken, { type: 'bearer' })
-      .expect(200);
-    for (const row of (list.body as { data: UserResponse[] }).data)
-      expect(row).not.toHaveProperty('password');
-    await request(server)
-      .delete('/api/users/' + user.user_id)
-      .auth(tokens.accessToken, { type: 'bearer' })
-      .expect(200);
-    await request(server)
-      .get('/api/users/' + user.user_id)
-      .auth(tokens.accessToken, { type: 'bearer' })
-      .expect(404);
-    await request(server)
-      .post('/api/auth/login')
-      .send({ email: user.email, password: 'changed123' })
-      .expect(401);
+      .expect(403);
   });
 });

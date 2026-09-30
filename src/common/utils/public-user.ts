@@ -1,8 +1,6 @@
 import { User } from '../../modules/users/entities/user.entity';
+import { UserResponseDto } from '../../modules/users/dto/user-response.dto';
 
-export function publicUser(user: User) {
-  const { password, tokenVersion, ...result } = user;
-  void password;
-  void tokenVersion;
-  return result;
+export function publicUser(user: User): UserResponseDto {
+  return new UserResponseDto(user);
 }

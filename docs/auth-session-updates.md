@@ -1,51 +1,52 @@
-# Auth and user API
+# JWT và phiên đăng nhập
 
-Base path: /api. Successful results are under response.data. Passwords and tokenVersion are never returned in user responses.
+## Mô hình hiện tại
 
-## Endpoints
+Một tài khoản có một phiên hoạt động. Access token và refresh token dùng secret riêng, thuật toán HS256; payload có user_id, email, role, fullName, tokenVersion và tokenType. Token còn có thời hạn và định danh do bộ ký tạo.
 
-| Method | Path | Authentication |
-| --- | --- | --- |
-| POST | /auth/register | Public; email, password, optional fullName |
-| POST | /auth/login | Public; email and password; returns 200 with accessToken and user; refresh_token in HttpOnly cookie |
-| POST | /auth/refresh | Requires refresh_token cookie; empty body; returns 200 with a new access token and replaces the cookie |
-| POST | /auth/logout | Bearer access token; empty body; returns 200 |
-| GET | /users | Admin access token; up to 100 non-deleted users, newest first |
-| POST | /users | Admin access token; same body as registration |
-| GET | /users/:id | Admin access token; string user_id |
-| PATCH | /users/:id | Admin access token; optional email, password, fullName |
-| DELETE | /users/:id | Admin access token; soft-deletes the account |
+Role trong JWT không phải nguồn quyết định phân quyền. Mỗi request được bảo vệ tra lại user trong database và dùng role hiện tại. Request chỉ giữ principal gồm user_id, role, status, tokenVersion; không giữ password hash.
 
-Registration and user creation always assign the default user role. A trusted administrator must provision the initial admin role in the database; the public API does not accept role changes.
+| Thao tác | Ảnh hưởng phiên |
+| --- | --- |
+| Login | Tăng tokenVersion, token của phiên cũ không còn hợp lệ |
+| Refresh | Tăng tokenVersion, thay cả access token và refresh cookie |
+| Logout | Tăng tokenVersion, thu hồi phiên và xóa cookie |
+| Đổi mật khẩu cá nhân | Cập nhật hash và tăng tokenVersion nguyên tử; xóa cookie, yêu cầu login lại |
+| Sửa họ tên cá nhân/admin | Không tăng tokenVersion, phiên tiếp tục hoạt động |
+| Trạng thái khác active | Bị từ chối login, refresh và request được bảo vệ |
 
-## Sessions
+Việc cập nhật role/trạng thái qua API chưa được triển khai. Nếu quản trị thay role trong database, request tiếp theo dùng role mới; ADMIN không có quyền bỏ qua chính sách của route.
 
-One active session per account. Login and refresh invalidate the previous access/refresh pair. The client must replace the access token after refresh and serialize refresh requests. The browser or Postman cookie jar stores the refresh_token cookie automatically; it is not returned in JSON. Concurrent refresh attempts with the same cookie result in at most one successful rotation.
+## Refresh cookie
 
-The refresh cookie uses HttpOnly, SameSite=Lax and Path=/api/auth; Secure is enabled in production. Logout clears it with the same cookie options. The application registers cookie-parser before routing.
+- Tên: `refresh_token`.
+- Thuộc tính: `HttpOnly`, `SameSite=Lax`, `Path=/api/auth`.
+- `Secure=true` khi NODE_ENV là production.
+- Cookie được đọc qua cookie-parser; refresh token không nằm trong response JSON.
+- Logout và đổi mật khẩu xóa cookie bằng cùng path/options sau khi thao tác thành công.
 
-Logout invalidates the current pair immediately. Account updates invalidate previous tokens. Deleted, banned and suspended accounts cannot log in, refresh or call protected endpoints. Deletion preserves the account record and its unique email.
+**Giới hạn hiện tại:** maxAge của cookie đang cố định 7 ngày, trong khi thời hạn JWT refresh có thể cấu hình bằng JWT_REFRESH_EXPIRES. Mặc định hai giá trị cùng là 7 ngày; nếu đổi cấu hình, cần đồng bộ maxAge trong code. Backend vẫn xác thực thời hạn của JWT, không tin thời hạn lưu cookie.
 
-Session versions persist in PostgreSQL. New token payloads include tokenVersion and tokenType. Tokens created by the previous implementation must be replaced by logging in again.
+Đổi mật khẩu dùng route `/api/users/me/password`; cookie path /api/auth khiến browser không gửi cookie vào route này, nhưng response vẫn có thể xóa cookie bằng đúng path đã tạo.
 
-## Configuration and database
+## Cấu hình
 
-JWT_ACCESS_SECRET and JWT_REFRESH_SECRET are required and must differ.
-JWT_ACCESS_EXPIRES defaults to 15m; JWT_REFRESH_EXPIRES defaults to 7d.
-Supported lifetimes: positive integer seconds, or an integer followed by s, m, h, d, w.
+| Biến | Yêu cầu/mặc định |
+| --- | --- |
+| JWT_ACCESS_SECRET | Bắt buộc |
+| JWT_REFRESH_SECRET | Bắt buộc; phải khác access secret |
+| JWT_ACCESS_EXPIRES | 15m |
+| JWT_REFRESH_EXPIRES | 7d |
+| DB_SYNCHRONIZE | Không bắt buộc; nếu đặt sẽ ghi đè hành vi mặc định |
 
-The Users table needs an integer tokenVersion column with default 0.
-Development schema synchronization adds it on startup unless DB_SYNCHRONIZE=false. For production (synchronize disabled), apply [token-version.sql](./token-version.sql) before deployment.
+Thời hạn hỗ trợ số nguyên dương tính bằng giây, hoặc số nguyên kèm s/m/h/d/w. Giá trị không hợp lệ bị từ chối khi nạp cấu hình.
 
-## Verification
+Database cần cột `Users.tokenVersion`, integer NOT NULL DEFAULT 0. Khi DB_SYNCHRONIZE không được đặt, synchronize mặc định bật ngoài production và tắt trong production. Với database chưa có cột và synchronize tắt, áp dụng [SQL bổ sung](./token-version.sql) trước triển khai. Không cần bảng role/permission mới cho phần phân quyền hiện tại.
 
-Use Node.js 24.9+ (verified locally with Node.js 25.8.1).
-Jest runs with --experimental-vm-modules to load the installed Nest ESM packages.
+## Tương thích
 
-- npm run build
-- npm test -- --runInBand
-- npm run test:e2e -- --runInBand
-- npx eslint "src/**/*.ts" "test/**/*.ts"
-
-HTTP tests load the real application modules, validation, guards, interceptors and token signing, while replacing the database module and User repository with an in-memory fixture. They do not verify PostgreSQL connectivity or execute the SQL migration.
-
+- Token cũ thiếu claims mà bộ xác thực hiện tại yêu cầu cần được thay bằng đăng nhập lại.
+- Refresh token không được nhận qua JSON body.
+- Sau refresh, bỏ access token cũ và dùng token mới; không chạy nhiều refresh song song.
+- Sau đổi mật khẩu, xóa access token phía client và chuyển về đăng nhập.
+- Các thay đổi API admin được mô tả tại [API Users](./users-api.md).
