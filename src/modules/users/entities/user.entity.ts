@@ -40,6 +40,9 @@ export class User {
   })
   password!: string;
 
+  @Column({ type: 'int', default: 0 })
+  tokenVersion!: number;
+
   @Column({
     type: 'varchar',
     length: 100,

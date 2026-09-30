@@ -15,7 +15,9 @@ import { DataSource } from 'typeorm';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
         autoLoadEntities: true, // Tự động load các entity được import trong scope của feature module
-        synchronize: configService.get<string>('NODE_ENV') !== 'production', // Chú ý: Nên tắt trên production
+        synchronize:
+          configService.get<boolean>('DB_SYNCHRONIZE') ??
+          configService.get<string>('NODE_ENV') !== 'production',
       }),
     }),
   ],

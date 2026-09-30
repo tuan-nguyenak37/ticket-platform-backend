@@ -1,47 +1,68 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { RegisterDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
-import { hashPassword, comparePassword } from '../../common/utils/password.util';
+import { comparePassword } from '../../common/utils/password.util';
+import { publicUser } from '../../common/utils/public-user';
 import { UsersService } from '../users/users.service';
+import { User } from '../users/entities/user.entity';
+import { UserStatus } from '../users/entities/enums/user-status.enum';
+import { LoginDto } from './dto/login-auth.dto';
+import { TokenService } from './jwt/token.service';
+import { JwtPayload } from './jwt/jwt.interface';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly userService: UsersService,
+    private readonly users: UsersService,
+    private readonly tokens: TokenService,
   ) {}
 
-  async create(registerDto: RegisterDto) {
-    const { email, password, fullName } = registerDto;
+  async create(dto: RegisterDto) {
+    return publicUser(await this.users.create(dto));
+  }
 
-    const existingUser = await this.userService.findByEmail(email);
-    if (existingUser) {
-      throw new ConflictException('Email đã tồn tại trên hệ thống');
+  async login(dto: LoginDto) {
+    const user = await this.users.findByEmail(dto.email);
+    if (
+      !user ||
+      !(await comparePassword(dto.password, user.password)) ||
+      user.status !== UserStatus.ACTIVE
+    ) {
+      throw new UnauthorizedException(
+        'Sai tài khoản, mật khẩu hoặc tài khoản đã bị khóa',
+      );
     }
-
-    const hashedPassword = await hashPassword(password);
-    const user = await this.userService.create({
-      email,
-      password: hashedPassword,
-      fullName,
-    });
-
-    const { password: _, ...result } = user;
-    return result;
+    return this.issueTokens(user, true);
   }
 
-  findAll() {
-    return `This action returns all auth`;
+  async refresh(refreshToken: string) {
+    const payload = await this.tokens.verifyRefreshToken(refreshToken);
+    const user = await this.users.findById(payload.user_id);
+    if (
+      !user ||
+      user.status !== UserStatus.ACTIVE ||
+      user.tokenVersion !== payload.tokenVersion
+    ) {
+      throw new UnauthorizedException('Phiên đăng nhập không còn hợp lệ');
+    }
+    return this.issueTokens(user);
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} auth`;
+  async logout(user: User) {
+    await this.users.rotateTokenVersion(user);
+    return { message: 'Đăng xuất thành công' };
   }
 
-  update(id: number, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${id} auth`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} auth`;
+  private async issueTokens(user: User, login = false) {
+    const payload: JwtPayload = {
+      user_id: user.user_id,
+      email: user.email,
+      role: user.role,
+      fullName: user.fullName,
+      tokenVersion: user.tokenVersion + 1,
+    };
+    // Sign first; a signing failure must not invalidate the current session.
+    const tokens = await this.tokens.generateTokens(payload);
+    await this.users.rotateTokenVersion(user, login);
+    return { ...tokens, user: publicUser(user) };
   }
 }

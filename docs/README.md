@@ -4,4 +4,6 @@ Thư mục chứa toàn bộ tài liệu kỹ thuật, đặc tả API và thi�
 
 ## Danh Mục Tài Liệu
 
-1. **[Xác thực & Người dùng (Auth & User API)](file:///d:/HK1-2026_2027/Do_an_nganh/project/backend/docs/auth-api.md)**: Chi tiết các API đăng ký, đăng nhập, DTO validation, mã lỗi và schema bảng Users.
+1. **[Xác thực & Người dùng](./auth-api.md)**: Chi tiết đăng ký, validation và cấu trúc response.
+2. **[JWT, phiên đăng nhập và quản lý Users](./auth-session-updates.md)**: Endpoint hiện tại, refresh/logout, phân quyền admin và cách chạy test.
+3. **[Cập nhật schema tokenVersion](./token-version.sql)**: SQL bổ sung cột trước khi triển khai với synchronize tắt.

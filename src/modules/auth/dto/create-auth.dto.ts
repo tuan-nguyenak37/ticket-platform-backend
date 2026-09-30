@@ -3,7 +3,6 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  Matches,
   MinLength,
   MaxLength,
 } from 'class-validator';
@@ -12,7 +11,9 @@ import { Transform } from 'class-transformer';
 export class RegisterDto {
   @IsNotEmpty({ message: 'Email không được để trống' })
   @IsEmail({}, { message: 'Email không hợp lệ' })
-  @Transform(({ value }: { value: string }) => value?.trim().toLowerCase())
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim().toLowerCase() : value,
+  )
   email!: string;
 
   @IsNotEmpty({ message: 'Mật khẩu không được để trống' })
@@ -26,6 +27,3 @@ export class RegisterDto {
   @MaxLength(100, { message: 'Họ và tên không quá 100 ký tự' })
   fullName?: string;
 }
-
-export { RegisterDto as CreateAuthDto };
-

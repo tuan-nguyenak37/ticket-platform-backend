@@ -1,5 +1,7 @@
 # Tài Liệu API - Xác Thực & Người Dùng (Auth & User API)
 
+Luồng login, refresh, logout và phân quyền Users hiện tại được mô tả tại [JWT và phiên đăng nhập](./auth-session-updates.md).
+
 Tài liệu chi tiết kỹ thuật cho các API liên quan đến Authentication và User thuộc hệ thống Backend Ticket Platform.
 
 ---
@@ -191,8 +193,9 @@ const register = async (data: { email: string; password: string; fullName?: stri
 | `password` | `VARCHAR(255)` | `@Column` | `NO` | - | Đã băm với bcrypt |
 | `fullName` | `VARCHAR(100)` | `@Column` | `YES` | `null` | Họ tên người dùng |
 | `avatarUrl` | `TEXT` | `@Column` | `YES` | `null` | Link ảnh đại diện |
-| `role` | `ENUM ('admin', 'user', 'organizer')` | `@Column` | `NO` | `'user'` | Vai trò tài khoản |
-| `status` | `ENUM ('active', 'inactive', 'banned')` | `@Column` | `NO` | `'active'` | Trạng thái tài khoản |
+| `role` | `ENUM ('admin', 'user', 'moderator')` | `@Column` | `NO` | `'user'` | Vai trò tài khoản |
+| `status` | `ENUM ('active', 'suspended', 'banned', 'deleted')` | `@Column` | `NO` | `'active'` | Trạng thái tài khoản |
+| `tokenVersion` | `INTEGER` | `@Column` | `NO` | `0` | Phiên bản phiên đăng nhập; không trả trong response user |
 | `emailVerified`| `BOOLEAN` | `@Column` | `NO` | `false` | Xác thực email |
 | `phoneVerified`| `BOOLEAN` | `@Column` | `NO` | `false` | Xác thực SĐT |
 | `identityVerified` | `BOOLEAN` | `@Column` | `NO` | `false` | Xác thực danh tính (KYC) |

@@ -1,4 +1,14 @@
 import * as Joi from 'joi';
+import { tokenLifetimeSeconds } from './token-lifetime';
+
+const tokenLifetime = Joi.string().custom((value: string, helpers) => {
+  try {
+    tokenLifetimeSeconds(value);
+    return value;
+  } catch {
+    return helpers.error('any.invalid');
+  }
+});
 
 export const envValidationSchema = Joi.object({
   NODE_ENV: Joi.string()
@@ -10,4 +20,11 @@ export const envValidationSchema = Joi.object({
   DB_USERNAME: Joi.string().required(),
   DB_PASSWORD: Joi.string().required(),
   DB_NAME: Joi.string().required(),
+  DB_SYNCHRONIZE: Joi.boolean().optional(),
+  JWT_ACCESS_SECRET: Joi.string().required(),
+  JWT_ACCESS_EXPIRES: tokenLifetime.default('15m'),
+  JWT_REFRESH_SECRET: Joi.string()
+    .invalid(Joi.ref('JWT_ACCESS_SECRET'))
+    .required(),
+  JWT_REFRESH_EXPIRES: tokenLifetime.default('7d'),
 });
