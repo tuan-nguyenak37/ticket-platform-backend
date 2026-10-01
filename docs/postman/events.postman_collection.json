@@ -1,0 +1,1048 @@
+{
+  "info": {
+    "name": "Events - Create and local images",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Chọn hai file local trong từng request. Điền accessToken (ADMIN), moderatorToken, userToken và categoryId. Tạo dữ liệu thật; chưa được chạy."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:6000"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "moderatorToken",
+      "value": ""
+    },
+    {
+      "key": "userToken",
+      "value": ""
+    },
+    {
+      "key": "categoryId",
+      "value": ""
+    },
+    {
+      "key": "eventId",
+      "value": ""
+    },
+    {
+      "key": "draftId",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.variables.set(\"startTime\", new Date(Date.now() + 86400000).toISOString());",
+          "pm.variables.set(\"endTime\", new Date(Date.now() + 90000000).toISOString());"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "ADMIN creates published",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/events",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "name",
+              "value": "Sự kiện mẫu",
+              "type": "text"
+            },
+            {
+              "key": "shortDescription",
+              "value": "Sự kiện kiểm tra API",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "Nội dung văn bản thuần",
+              "type": "text"
+            },
+            {
+              "key": "startTime",
+              "value": "{{startTime}}",
+              "type": "text"
+            },
+            {
+              "key": "endTime",
+              "value": "{{endTime}}",
+              "type": "text"
+            },
+            {
+              "key": "venueName",
+              "value": "Nhà hát",
+              "type": "text"
+            },
+            {
+              "key": "address",
+              "value": "Hà Nội",
+              "type": "text"
+            },
+            {
+              "key": "categoryId",
+              "value": "{{categoryId}}",
+              "type": "text"
+            },
+            {
+              "key": "status",
+              "value": "published",
+              "type": "text"
+            },
+            {
+              "key": "thumbnail",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            },
+            {
+              "key": "banner",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "const data = pm.response.json().data;",
+              "pm.collectionVariables.set(data.status === \"draft\" ? \"draftId\" : \"eventId\", data.event_id);",
+              "pm.test(\"No user entity\", () => pm.expect(data).not.to.have.property(\"creator\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "MODERATOR creates published",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{moderatorToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/events",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "name",
+              "value": "Sự kiện mẫu",
+              "type": "text"
+            },
+            {
+              "key": "shortDescription",
+              "value": "Sự kiện kiểm tra API",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "Nội dung văn bản thuần",
+              "type": "text"
+            },
+            {
+              "key": "startTime",
+              "value": "{{startTime}}",
+              "type": "text"
+            },
+            {
+              "key": "endTime",
+              "value": "{{endTime}}",
+              "type": "text"
+            },
+            {
+              "key": "venueName",
+              "value": "Nhà hát",
+              "type": "text"
+            },
+            {
+              "key": "address",
+              "value": "Hà Nội",
+              "type": "text"
+            },
+            {
+              "key": "categoryId",
+              "value": "{{categoryId}}",
+              "type": "text"
+            },
+            {
+              "key": "status",
+              "value": "published",
+              "type": "text"
+            },
+            {
+              "key": "thumbnail",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            },
+            {
+              "key": "banner",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "const data = pm.response.json().data;",
+              "pm.collectionVariables.set(data.status === \"draft\" ? \"draftId\" : \"eventId\", data.event_id);",
+              "pm.test(\"No user entity\", () => pm.expect(data).not.to.have.property(\"creator\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create draft",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/events",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "name",
+              "value": "Sự kiện mẫu",
+              "type": "text"
+            },
+            {
+              "key": "shortDescription",
+              "value": "Sự kiện kiểm tra API",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "Nội dung văn bản thuần",
+              "type": "text"
+            },
+            {
+              "key": "startTime",
+              "value": "{{startTime}}",
+              "type": "text"
+            },
+            {
+              "key": "endTime",
+              "value": "{{endTime}}",
+              "type": "text"
+            },
+            {
+              "key": "venueName",
+              "value": "Nhà hát",
+              "type": "text"
+            },
+            {
+              "key": "address",
+              "value": "Hà Nội",
+              "type": "text"
+            },
+            {
+              "key": "categoryId",
+              "value": "{{categoryId}}",
+              "type": "text"
+            },
+            {
+              "key": "status",
+              "value": "draft",
+              "type": "text"
+            },
+            {
+              "key": "thumbnail",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            },
+            {
+              "key": "banner",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "const data = pm.response.json().data;",
+              "pm.collectionVariables.set(data.status === \"draft\" ? \"draftId\" : \"eventId\", data.event_id);",
+              "pm.test(\"No user entity\", () => pm.expect(data).not.to.have.property(\"creator\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "USER forbidden",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{userToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/events",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "name",
+              "value": "Sự kiện mẫu",
+              "type": "text"
+            },
+            {
+              "key": "shortDescription",
+              "value": "Sự kiện kiểm tra API",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "Nội dung văn bản thuần",
+              "type": "text"
+            },
+            {
+              "key": "startTime",
+              "value": "{{startTime}}",
+              "type": "text"
+            },
+            {
+              "key": "endTime",
+              "value": "{{endTime}}",
+              "type": "text"
+            },
+            {
+              "key": "venueName",
+              "value": "Nhà hát",
+              "type": "text"
+            },
+            {
+              "key": "address",
+              "value": "Hà Nội",
+              "type": "text"
+            },
+            {
+              "key": "categoryId",
+              "value": "{{categoryId}}",
+              "type": "text"
+            },
+            {
+              "key": "status",
+              "value": "published",
+              "type": "text"
+            },
+            {
+              "key": "thumbnail",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            },
+            {
+              "key": "banner",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Guest unauthorized",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/events",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "name",
+              "value": "Sự kiện mẫu",
+              "type": "text"
+            },
+            {
+              "key": "shortDescription",
+              "value": "Sự kiện kiểm tra API",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "Nội dung văn bản thuần",
+              "type": "text"
+            },
+            {
+              "key": "startTime",
+              "value": "{{startTime}}",
+              "type": "text"
+            },
+            {
+              "key": "endTime",
+              "value": "{{endTime}}",
+              "type": "text"
+            },
+            {
+              "key": "venueName",
+              "value": "Nhà hát",
+              "type": "text"
+            },
+            {
+              "key": "address",
+              "value": "Hà Nội",
+              "type": "text"
+            },
+            {
+              "key": "categoryId",
+              "value": "{{categoryId}}",
+              "type": "text"
+            },
+            {
+              "key": "status",
+              "value": "published",
+              "type": "text"
+            },
+            {
+              "key": "thumbnail",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            },
+            {
+              "key": "banner",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Missing banner",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/events",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "name",
+              "value": "Sự kiện mẫu",
+              "type": "text"
+            },
+            {
+              "key": "shortDescription",
+              "value": "Sự kiện kiểm tra API",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "Nội dung văn bản thuần",
+              "type": "text"
+            },
+            {
+              "key": "startTime",
+              "value": "{{startTime}}",
+              "type": "text"
+            },
+            {
+              "key": "endTime",
+              "value": "{{endTime}}",
+              "type": "text"
+            },
+            {
+              "key": "venueName",
+              "value": "Nhà hát",
+              "type": "text"
+            },
+            {
+              "key": "address",
+              "value": "Hà Nội",
+              "type": "text"
+            },
+            {
+              "key": "categoryId",
+              "value": "{{categoryId}}",
+              "type": "text"
+            },
+            {
+              "key": "status",
+              "value": "published",
+              "type": "text"
+            },
+            {
+              "key": "thumbnail",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invalid category",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/events",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "name",
+              "value": "Sự kiện mẫu",
+              "type": "text"
+            },
+            {
+              "key": "shortDescription",
+              "value": "Sự kiện kiểm tra API",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "Nội dung văn bản thuần",
+              "type": "text"
+            },
+            {
+              "key": "startTime",
+              "value": "{{startTime}}",
+              "type": "text"
+            },
+            {
+              "key": "endTime",
+              "value": "{{endTime}}",
+              "type": "text"
+            },
+            {
+              "key": "venueName",
+              "value": "Nhà hát",
+              "type": "text"
+            },
+            {
+              "key": "address",
+              "value": "Hà Nội",
+              "type": "text"
+            },
+            {
+              "key": "categoryId",
+              "value": "missing",
+              "type": "text"
+            },
+            {
+              "key": "status",
+              "value": "published",
+              "type": "text"
+            },
+            {
+              "key": "thumbnail",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            },
+            {
+              "key": "banner",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invalid time order",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/events",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "name",
+              "value": "Sự kiện mẫu",
+              "type": "text"
+            },
+            {
+              "key": "shortDescription",
+              "value": "Sự kiện kiểm tra API",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "Nội dung văn bản thuần",
+              "type": "text"
+            },
+            {
+              "key": "startTime",
+              "value": "{{startTime}}",
+              "type": "text"
+            },
+            {
+              "key": "endTime",
+              "value": "2020-01-01T00:00:00Z",
+              "type": "text"
+            },
+            {
+              "key": "venueName",
+              "value": "Nhà hát",
+              "type": "text"
+            },
+            {
+              "key": "address",
+              "value": "Hà Nội",
+              "type": "text"
+            },
+            {
+              "key": "categoryId",
+              "value": "{{categoryId}}",
+              "type": "text"
+            },
+            {
+              "key": "status",
+              "value": "published",
+              "type": "text"
+            },
+            {
+              "key": "thumbnail",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            },
+            {
+              "key": "banner",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cannot create cancelled",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/events",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "name",
+              "value": "Sự kiện mẫu",
+              "type": "text"
+            },
+            {
+              "key": "shortDescription",
+              "value": "Sự kiện kiểm tra API",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "Nội dung văn bản thuần",
+              "type": "text"
+            },
+            {
+              "key": "startTime",
+              "value": "{{startTime}}",
+              "type": "text"
+            },
+            {
+              "key": "endTime",
+              "value": "{{endTime}}",
+              "type": "text"
+            },
+            {
+              "key": "venueName",
+              "value": "Nhà hát",
+              "type": "text"
+            },
+            {
+              "key": "address",
+              "value": "Hà Nội",
+              "type": "text"
+            },
+            {
+              "key": "categoryId",
+              "value": "{{categoryId}}",
+              "type": "text"
+            },
+            {
+              "key": "status",
+              "value": "cancelled",
+              "type": "text"
+            },
+            {
+              "key": "thumbnail",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            },
+            {
+              "key": "banner",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cannot spoof creator",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [],
+        "url": "{{baseUrl}}/api/events",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "name",
+              "value": "Sự kiện mẫu",
+              "type": "text"
+            },
+            {
+              "key": "shortDescription",
+              "value": "Sự kiện kiểm tra API",
+              "type": "text"
+            },
+            {
+              "key": "description",
+              "value": "Nội dung văn bản thuần",
+              "type": "text"
+            },
+            {
+              "key": "startTime",
+              "value": "{{startTime}}",
+              "type": "text"
+            },
+            {
+              "key": "endTime",
+              "value": "{{endTime}}",
+              "type": "text"
+            },
+            {
+              "key": "venueName",
+              "value": "Nhà hát",
+              "type": "text"
+            },
+            {
+              "key": "address",
+              "value": "Hà Nội",
+              "type": "text"
+            },
+            {
+              "key": "categoryId",
+              "value": "{{categoryId}}",
+              "type": "text"
+            },
+            {
+              "key": "status",
+              "value": "published",
+              "type": "text"
+            },
+            {
+              "key": "createdBy",
+              "value": "another-user",
+              "type": "text"
+            },
+            {
+              "key": "thumbnail",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            },
+            {
+              "key": "banner",
+              "type": "file",
+              "src": [],
+              "description": "Chọn file ảnh local trước khi gửi"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Published thumbnail",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{baseUrl}}/api/events/{{eventId}}/images/thumbnail"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Image response\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^image\\//));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Published banner",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{baseUrl}}/api/events/{{eventId}}/images/banner"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Image response\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^image\\//));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Draft image hidden",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{baseUrl}}/api/events/{{draftId}}/images/thumbnail"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invalid image kind",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{baseUrl}}/api/events/{{eventId}}/images/pdf"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

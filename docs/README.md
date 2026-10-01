@@ -7,6 +7,8 @@ Tài liệu cập nhật theo mã nguồn Auth/Users ngày 30/09/2026.
 | [API xác thực](./auth-api.md) | Đăng ký, đăng nhập, refresh, logout và định dạng response |
 | [JWT và phiên đăng nhập](./auth-session-updates.md) | Cookie, thu hồi token, cấu hình và yêu cầu database |
 | [API người dùng](./users-api.md) | Hồ sơ cá nhân, đổi mật khẩu và API quản trị |
+| [API sự kiện](./events-api.md) | ADMIN/MODERATOR tạo sự kiện kèm hai ảnh local |
+| [Upload local](./uploads.md) | Cấu hình upload dùng chung |
 | [Phân quyền](./authorization.md) | Chính sách route, quyền sở hữu, audit và ma trận nghiệp vụ tương lai |
 | [Trạng thái kiểm chứng](./verification-status.md) | Kết quả đã có và các bước chưa thực hiện |
 | [SQL tokenVersion](./token-version.sql) | Bổ sung cột phiên đăng nhập khi database chưa có |

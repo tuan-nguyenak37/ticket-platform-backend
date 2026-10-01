@@ -6,7 +6,7 @@ Backend hiện có Auth và Users. Ba role giữ nguyên: USER, MODERATOR, ADMIN
 
 - USER và MODERATOR được quản lý hồ sơ của chính mình.
 - ADMIN có thêm quyền tạo, xem danh sách, xem chi tiết và sửa tên user.
-- MODERATOR chưa có quyền quản trị hoặc kiểm duyệt riêng.
+- MODERATOR và ADMIN được tạo sự kiện draft/published kèm ảnh qua POST /api/events. MODERATOR không được quản lý user/category hoặc kiểm duyệt tin bán.
 - Không có API đổi role, khóa/mở khóa hoặc xóa tài khoản.
 - Chính sách nằm trong code; chưa có bảng permission hoặc giao diện quản trị quyền.
 
@@ -104,6 +104,7 @@ Các action đang có:
 | password.change | Đổi mật khẩu cá nhân |
 | users.create | Admin tạo tài khoản |
 | users.update | Admin sửa tên tài khoản |
+| events.create | ADMIN/MODERATOR tạo sự kiện, target ID là event_id khi thành công |
 
 result gồm allowed, denied, failed. AuditService chỉ ghi danh sách trường nêu trên; không ghi body, header, password, hash, JWT hoặc cookie. Middleware tự sinh request ID và trả X-Request-Id; không tin request ID tùy ý từ client.
 

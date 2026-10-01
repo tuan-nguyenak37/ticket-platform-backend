@@ -52,3 +52,9 @@ Lệnh npm run lint hiện có tùy chọn --fix; lệnh eslint ở trên dùng 
 3. Cập nhật client theo các [thay đổi API Users](./users-api.md).
 4. Hoàn thành các mục còn thiếu ở bảng kiểm chứng rồi chạy trên staging.
 5. Kiểm tra nơi thu thập log AuthorizationAudit; hiện chỉ có logger ứng dụng.
+# Bổ sung chức năng tạo sự kiện
+
+POST /api/events cho ADMIN/MODERATOR và GET ảnh công khai đã được triển khai.
+Đã chạy TypeScript và build; chưa chạy unit/HTTP test hoặc collection Events theo yêu cầu.
+Chưa xác minh runtime PostgreSQL, rollback file hoặc upload bằng Postman.
+Không chạy seed/migration và không thay đổi schema trong đợt này.

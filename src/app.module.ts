@@ -8,8 +8,17 @@ import { AuthModule } from './modules/auth/auth.module';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { GlobalExceptionFilter } from './common/utils/filters/global-exception.filter';
 import { GlobalResponseInterceptor } from './common/utils/interceptors/global-response.interceptor';
+import { EventsModule } from './modules/events/events.module';
+import { UploadsModule } from './common/uploads/uploads.module';
 @Module({
-  imports: [AppConfigModule, DatabaseModule, UsersModule, AuthModule],
+  imports: [
+    AppConfigModule,
+    DatabaseModule,
+    UsersModule,
+    AuthModule,
+    EventsModule,
+    UploadsModule,
+  ],
   controllers: [AppController],
   providers: [
     AppService,
