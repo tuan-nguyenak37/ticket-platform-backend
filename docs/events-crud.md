@@ -34,6 +34,14 @@ Published đã bắt đầu chỉ được hủy trước endTime bằng body ch
 cancelled không sửa tiếp. Xóa được ở mọi trạng thái, kể cả published/cancelled,
 nếu không có khóa ngoại từ tài nguyên khác ngăn xóa.
 
+## Ghim sự kiện
+
+- [GET /api/events/pinned](./events-api.md#pinned): public, không cần tham số; data là mảng tối đa 4 sự kiện ghim published chưa kết thúc.
+- [PATCH /api/events/:id/pin](./events-api.md#pin): ADMIN/MODERATOR; body JSON { "isPinned": true } hoặc false; trả đầy đủ sự kiện quản lý.
+- Cờ isPinned và thời gian pinnedAt có trong DTO sự kiện. Hết hạn giải phóng suất bằng điều kiện truy vấn; hủy đồng thời bỏ ghim; xóa giải phóng suất.
+- Khóa advisory dùng chung trước khóa hàng, trong transaction READ COMMITTED, để hai yêu cầu không vượt 4 suất. Ghim lặp giữ nguyên pinnedAt.
+- [SQL triển khai](./event-pinning.sql) cho database tắt synchronize; không seed.
+
 ## Database và file local
 
 Update khóa bản ghi trong transaction và đọc dữ liệu mới nhất. Hai PATCH được
@@ -50,7 +58,8 @@ kiểm tra trạng thái sự kiện hoặc quyền quản lý.
 Lượt local ngày 01/10/2026: 37 request, 48 assertions đạt; hai event test đã xóa,
 5 file ảnh phát sinh đã được dọn. Build và TypeScript đạt trong lượt triển khai đó.
 Chưa kiểm tra lỗi I/O, sự cố database và cập nhật đồng thời thực tế.
-Lượt 05/10/2026 chỉ cập nhật tài liệu theo code, không chạy lại backend/test.
+Lượt chỉnh docs trước khi thêm ghim ngày 05/10/2026 không chạy lại backend/test.
+Kiểm chứng tính năng ghim xem [trạng thái hiện tại](./verification-status.md).
 
 Collection: [Events CRUD](./postman/events-crud.postman_collection.json).
 Môi trường: Backend Local - Events. [Hướng dẫn Postman local](./postman/local-setup.md).

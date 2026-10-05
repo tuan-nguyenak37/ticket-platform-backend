@@ -1,35 +1,61 @@
 {
   "info": {
     "name": "Backend - Events CRUD",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Chọn Backend Local - Events. Chạy theo thứ tự. Tạo hai event test riêng, sửa rồi xóa chúng; không dùng eventId của dữ liệu khác. File mẫu local từ .tmp/postman-files."
+    "description": "Chỉ gồm request hợp lệ. Chọn Backend Local - Events (baseUrl=http://localhost:7000). Có thể chạy lần lượt: lấy category, đăng nhập, tạo/sửa/công bố/xóa một event, rồi tạo/công bố/hủy/xóa event thứ hai, refresh và xem hồ sơ. crudId là ID được lưu sau khi tạo. Chạy toàn bộ collection sẽ thực hiện thao tác ghi/xóa này. Không chạy đồng thời với collection dùng cùng tài khoản. Sau công bố có ghim → danh sách ghim → bỏ ghim, trước bước xóa. Cần còn một suất ghim khi chạy đoạn này.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "List active event categories (public)",
+      "name": "01 - List active event categories (public)",
       "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/event-categories",
         "auth": {
           "type": "noauth"
         },
+        "method": "GET",
         "header": [
           {
             "key": "Accept",
             "value": "application/json"
           }
         ],
-        "description": "Public, không cần đăng nhập. Trả data là mảng category đang hoạt động, gồm category_id, name, slug, description, isActive. Dùng category_id cho field categoryId của sự kiện."
-      }
+        "url": {
+          "raw": "{{baseUrl}}/api/event-categories",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "event-categories"
+          ]
+        },
+        "description": "Public. Trả các category đang hoạt động. Lưu categoryId hiện tại nếu vẫn active, hoặc chọn category đầu tiên để dùng trong form sự kiện."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  const categories = pm.response.json().data;",
+              "  if (Array.isArray(categories)) {",
+              "    const selected = categories.find(c => c.category_id === pm.environment.get(\"categoryId\")) || categories[0];",
+              "    if (selected) pm.environment.set(\"categoryId\", selected.category_id);",
+              "    else pm.environment.unset(\"categoryId\");",
+              "  }",
+              "}"
+            ]
+          }
+        }
+      ]
     },
     {
-      "name": "Login ADMIN",
+      "name": "02 - Login ADMIN",
       "request": {
-        "method": "POST",
-        "url": "{{baseUrl}}/api/auth/login",
         "auth": {
           "type": "noauth"
         },
+        "method": "POST",
         "header": [
           {
             "key": "Content-Type",
@@ -44,40 +70,50 @@
               "language": "json"
             }
           }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
         }
       },
       "event": [
         {
-          "listen": "prerequest",
           "script": {
-            "type": "text/javascript",
             "exec": [
               "pm.environment.unset(\"accessToken\");",
               "pm.environment.unset(\"crudId\");",
               "pm.environment.set(\"crudName\", \"CRUD \" + pm.variables.replaceIn(\"{{$guid}}\"));"
-            ]
-          }
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "prerequest"
         },
         {
-          "listen": "test",
           "script": {
-            "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
               "if (pm.response.code === 200) {const d = pm.response.json().data; pm.test(\"Role\", () => pm.expect(d.user.role).to.eql(\"admin\")); if (d.user.role === \"admin\") pm.environment.set(\"accessToken\", d.accessToken);}"
-            ]
-          }
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
         }
       ]
     },
     {
-      "name": "Login MODERATOR",
+      "name": "03 - Login MODERATOR",
       "request": {
-        "method": "POST",
-        "url": "{{baseUrl}}/api/auth/login",
         "auth": {
           "type": "noauth"
         },
+        "method": "POST",
         "header": [
           {
             "key": "Content-Type",
@@ -92,38 +128,48 @@
               "language": "json"
             }
           }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
         }
       },
       "event": [
         {
           "listen": "prerequest",
           "script": {
-            "type": "text/javascript",
             "exec": [
               "pm.environment.unset(\"moderatorToken\");"
-            ]
+            ],
+            "type": "text/javascript"
           }
         },
         {
           "listen": "test",
           "script": {
-            "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
               "if (pm.response.code === 200) {const d = pm.response.json().data; pm.test(\"Role\", () => pm.expect(d.user.role).to.eql(\"moderator\")); if (d.user.role === \"moderator\") pm.environment.set(\"moderatorToken\", d.accessToken);}"
-            ]
+            ],
+            "type": "text/javascript"
           }
         }
       ]
     },
     {
-      "name": "Login USER",
+      "name": "04 - Login USER",
       "request": {
-        "method": "POST",
-        "url": "{{baseUrl}}/api/auth/login",
         "auth": {
           "type": "noauth"
         },
+        "method": "POST",
         "header": [
           {
             "key": "Content-Type",
@@ -138,35 +184,44 @@
               "language": "json"
             }
           }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
         }
       },
       "event": [
         {
-          "listen": "prerequest",
           "script": {
             "type": "text/javascript",
             "exec": [
               "pm.environment.unset(\"userToken\");"
             ]
-          }
+          },
+          "listen": "prerequest"
         },
         {
-          "listen": "test",
           "script": {
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
               "if (pm.response.code === 200) {const d = pm.response.json().data; pm.test(\"Role\", () => pm.expect(d.user.role).to.eql(\"user\")); if (d.user.role === \"user\") pm.environment.set(\"userToken\", d.accessToken);}"
             ]
-          }
+          },
+          "listen": "test"
         }
       ]
     },
     {
-      "name": "Create CRUD draft",
+      "name": "05 - Create draft",
       "request": {
-        "method": "POST",
-        "url": "{{baseUrl}}/api/events",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -177,43 +232,44 @@
             }
           ]
         },
+        "method": "POST",
         "header": [],
         "body": {
           "mode": "formdata",
           "formdata": [
             {
-              "key": "name",
               "value": "{{crudName}}",
+              "key": "name",
               "type": "text"
             },
             {
-              "key": "venueName",
               "value": "Local test venue",
+              "key": "venueName",
               "type": "text"
             },
             {
-              "key": "address",
               "value": "Ha Noi",
+              "key": "address",
               "type": "text"
             },
             {
-              "key": "categoryId",
               "value": "{{categoryId}}",
+              "key": "categoryId",
               "type": "text"
             },
             {
-              "key": "status",
               "value": "draft",
+              "key": "status",
               "type": "text"
             },
             {
-              "key": "startTime",
               "value": "{{startTime}}",
+              "key": "startTime",
               "type": "text"
             },
             {
-              "key": "endTime",
               "value": "{{endTime}}",
+              "key": "endTime",
               "type": "text"
             },
             {
@@ -227,40 +283,65 @@
               "src": "D:/HK1-2026_2027/Do_an_nganh/project/backend/.tmp/postman-files/banner.png"
             }
           ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/events",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events"
+          ]
         }
       },
       "event": [
         {
-          "listen": "prerequest",
           "script": {
-            "type": "text/javascript",
             "exec": [
               "pm.variables.set(\"startTime\",new Date(Date.now()+86400000).toISOString());",
               "pm.variables.set(\"endTime\",new Date(Date.now()+90000000).toISOString());"
-            ]
-          }
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "prerequest"
         },
         {
-          "listen": "test",
           "script": {
-            "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
               "if(pm.response.code===201) pm.environment.set(\"crudId\",pm.response.json().data.event_id);"
-            ]
-          }
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
         }
       ]
     },
     {
-      "name": "Public list hides draft",
+      "name": "06 - List public events",
       "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/events?q={{crudName}}",
         "auth": {
           "type": "noauth"
         },
-        "header": []
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/events?q={{crudName}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events"
+          ],
+          "query": [
+            {
+              "key": "q",
+              "value": "{{crudName}}"
+            }
+          ]
+        }
       },
       "event": [
         {
@@ -276,32 +357,8 @@
       ]
     },
     {
-      "name": "Public detail hides draft",
+      "name": "07 - View managed event (MODERATOR)",
       "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
-        "auth": {
-          "type": "noauth"
-        },
-        "header": []
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "MODERATOR reads ADMIN draft",
-      "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/events/manage/{{crudId}}",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -312,7 +369,20 @@
             }
           ]
         },
-        "header": []
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/events/manage/{{crudId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events",
+            "manage",
+            "{{crudId}}"
+          ]
+        }
       },
       "event": [
         {
@@ -327,10 +397,8 @@
       ]
     },
     {
-      "name": "MODERATOR filters managed drafts",
+      "name": "08 - List managed drafts",
       "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/events/manage?status=draft&q={{crudName}}&page=1&limit=5",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -341,7 +409,37 @@
             }
           ]
         },
-        "header": []
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/events/manage?status=draft&q={{crudName}}&page=1&limit=5",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events",
+            "manage"
+          ],
+          "query": [
+            {
+              "key": "status",
+              "value": "draft"
+            },
+            {
+              "key": "q",
+              "value": "{{crudName}}"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "5"
+            }
+          ]
+        }
       },
       "event": [
         {
@@ -357,39 +455,8 @@
       ]
     },
     {
-      "name": "USER cannot manage",
+      "name": "09 - View draft thumbnail (MODERATOR)",
       "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/events/manage",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{userToken}}",
-              "type": "string"
-            }
-          ]
-        },
-        "header": []
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "MODERATOR views draft image",
-      "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/events/manage/{{crudId}}/images/thumbnail",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -400,25 +467,38 @@
             }
           ]
         },
-        "header": []
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/events/manage/{{crudId}}/images/thumbnail",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events",
+            "manage",
+            "{{crudId}}",
+            "images",
+            "thumbnail"
+          ]
+        }
       },
       "event": [
         {
-          "listen": "test",
           "script": {
-            "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
-            ]
-          }
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
         }
       ]
     },
     {
-      "name": "MODERATOR edits ADMIN draft",
+      "name": "10 - Update event (MODERATOR)",
       "request": {
-        "method": "PATCH",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -429,6 +509,7 @@
             }
           ]
         },
+        "method": "PATCH",
         "header": [
           {
             "key": "Content-Type",
@@ -443,270 +524,35 @@
               "language": "json"
             }
           }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/events/{{crudId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events",
+            "{{crudId}}"
+          ]
         }
       },
       "event": [
         {
           "listen": "test",
           "script": {
-            "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
               "pm.test(\"Still draft\",()=>pm.expect(pm.response.json().data.status).to.eql(\"draft\"));"
-            ]
+            ],
+            "type": "text/javascript"
           }
         }
       ]
     },
     {
-      "name": "Reject null name",
+      "name": "11 - Publish event",
       "request": {
-        "method": "PATCH",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{accessToken}}",
-              "type": "string"
-            }
-          ]
-        },
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"name\": null\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Reject creator spoof",
-      "request": {
-        "method": "PATCH",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{accessToken}}",
-              "type": "string"
-            }
-          ]
-        },
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"createdBy\": \"another\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Reject partial invalid dates",
-      "request": {
-        "method": "PATCH",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{accessToken}}",
-              "type": "string"
-            }
-          ]
-        },
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"endTime\": \"2020-01-01T00:00:00Z\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Reject empty update",
-      "request": {
-        "method": "PATCH",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{accessToken}}",
-              "type": "string"
-            }
-          ]
-        },
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "USER cannot edit",
-      "request": {
-        "method": "PATCH",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{userToken}}",
-              "type": "string"
-            }
-          ]
-        },
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"name\": \"forbidden\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "USER cannot delete",
-      "request": {
-        "method": "DELETE",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{userToken}}",
-              "type": "string"
-            }
-          ]
-        },
-        "header": []
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Publish draft",
-      "request": {
-        "method": "PATCH",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -717,6 +563,7 @@
             }
           ]
         },
+        "method": "PATCH",
         "header": [
           {
             "key": "Content-Type",
@@ -731,52 +578,239 @@
               "language": "json"
             }
           }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/events/{{crudId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events",
+            "{{crudId}}"
+          ]
         }
       },
       "event": [
         {
-          "listen": "test",
           "script": {
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
             ]
+          },
+          "listen": "test"
+        }
+      ]
+    },
+    {
+      "name": "12 - Pin published event",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"isPinned\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/events/{{crudId}}/pin",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events",
+            "{{crudId}}",
+            "pin"
+          ]
+        },
+        "description": "ADMIN ghim sự kiện published chưa kết thúc. Cần còn ít nhất một trong 4 suất; không tự bỏ ghim sự kiện khác."
+      },
+      "event": [
+        {
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          },
+          "listen": "test"
+        }
+      ]
+    },
+    {
+      "name": "13 - List pinned events (public)",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/events/pinned",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events",
+            "pinned"
+          ]
+        },
+        "description": "Public; tối đa 4 sự kiện ghim còn hiệu lực, pinnedAt giảm dần. Không cần query/body."
+      },
+      "event": [
+        {
+          "script": {
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
+        }
+      ]
+    },
+    {
+      "name": "14 - Unpin published event (MODERATOR)",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{moderatorToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"isPinned\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/events/{{crudId}}/pin",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events",
+            "{{crudId}}",
+            "pin"
+          ]
+        },
+        "description": "MODERATOR bỏ ghim cùng sự kiện. Trả isPinned=false và pinnedAt=null."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ],
+            "type": "text/javascript"
           }
         }
       ]
     },
     {
-      "name": "Public detail",
+      "name": "15 - View public event",
       "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
         "auth": {
           "type": "noauth"
         },
-        "header": []
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/events/{{crudId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events",
+            "{{crudId}}"
+          ]
+        }
       },
       "event": [
         {
-          "listen": "test",
           "script": {
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
               "pm.test(\"No actor leakage\",()=>pm.expect(pm.response.json().data).not.to.have.property(\"createdBy\"));"
             ]
-          }
+          },
+          "listen": "test"
         }
       ]
     },
     {
-      "name": "Public list filtered",
+      "name": "16 - Search public events",
       "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/events?q={{crudName}}&phase=upcoming&categoryId={{categoryId}}",
         "auth": {
           "type": "noauth"
         },
-        "header": []
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/events?q={{crudName}}&phase=upcoming&categoryId={{categoryId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events"
+          ],
+          "query": [
+            {
+              "key": "q",
+              "value": "{{crudName}}"
+            },
+            {
+              "key": "phase",
+              "value": "upcoming"
+            },
+            {
+              "key": "categoryId",
+              "value": "{{categoryId}}"
+            }
+          ]
+        }
       },
       "event": [
         {
@@ -792,10 +826,8 @@
       ]
     },
     {
-      "name": "Name edit preserves published",
+      "name": "17 - Update event name",
       "request": {
-        "method": "PATCH",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -806,6 +838,7 @@
             }
           ]
         },
+        "method": "PATCH",
         "header": [
           {
             "key": "Content-Type",
@@ -820,26 +853,35 @@
               "language": "json"
             }
           }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/events/{{crudId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events",
+            "{{crudId}}"
+          ]
         }
       },
       "event": [
         {
-          "listen": "test",
           "script": {
-            "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
               "pm.test(\"Still published\",()=>pm.expect(pm.response.json().data.status).to.eql(\"published\"));"
-            ]
-          }
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
         }
       ]
     },
     {
-      "name": "Replace only thumbnail",
+      "name": "18 - Replace thumbnail",
       "request": {
-        "method": "PATCH",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -850,122 +892,45 @@
             }
           ]
         },
+        "method": "PATCH",
         "header": [],
         "body": {
           "mode": "formdata",
           "formdata": [
             {
-              "key": "thumbnail",
               "type": "file",
+              "key": "thumbnail",
               "src": "D:/HK1-2026_2027/Do_an_nganh/project/backend/.tmp/postman-files/thumbnail.png"
             }
           ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/events/{{crudId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events",
+            "{{crudId}}"
+          ]
         }
       },
       "event": [
         {
-          "listen": "test",
           "script": {
-            "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
-            ]
-          }
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
         }
       ]
     },
     {
-      "name": "Reject downgrade to draft",
+      "name": "19 - Delete published event (MODERATOR)",
       "request": {
-        "method": "PATCH",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{accessToken}}",
-              "type": "string"
-            }
-          ]
-        },
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"status\": \"draft\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Reject bad pagination",
-      "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/events?limit=101",
-        "auth": {
-          "type": "noauth"
-        },
-        "header": []
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Reject public status override",
-      "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/events?status=draft",
-        "auth": {
-          "type": "noauth"
-        },
-        "header": []
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "MODERATOR deletes published",
-      "request": {
-        "method": "DELETE",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -976,7 +941,19 @@
             }
           ]
         },
-        "header": []
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/events/{{crudId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events",
+            "{{crudId}}"
+          ]
+        }
       },
       "event": [
         {
@@ -991,10 +968,8 @@
       ]
     },
     {
-      "name": "Deleted detail missing",
+      "name": "20 - Create draft for publishing and cancellation",
       "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/events/manage/{{crudId}}",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -1005,123 +980,44 @@
             }
           ]
         },
-        "header": []
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Deleted image missing",
-      "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/events/{{crudId}}/images/thumbnail",
-        "auth": {
-          "type": "noauth"
-        },
-        "header": []
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Repeated delete missing",
-      "request": {
-        "method": "DELETE",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{accessToken}}",
-              "type": "string"
-            }
-          ]
-        },
-        "header": []
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Create another draft for cancel flow",
-      "request": {
         "method": "POST",
-        "url": "{{baseUrl}}/api/events",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{accessToken}}",
-              "type": "string"
-            }
-          ]
-        },
         "header": [],
         "body": {
           "mode": "formdata",
           "formdata": [
             {
-              "key": "name",
               "value": "{{crudName}}",
+              "key": "name",
               "type": "text"
             },
             {
-              "key": "venueName",
               "value": "Local test venue",
+              "key": "venueName",
               "type": "text"
             },
             {
-              "key": "address",
               "value": "Ha Noi",
+              "key": "address",
               "type": "text"
             },
             {
-              "key": "categoryId",
               "value": "{{categoryId}}",
+              "key": "categoryId",
               "type": "text"
             },
             {
-              "key": "status",
               "value": "draft",
+              "key": "status",
               "type": "text"
             },
             {
-              "key": "startTime",
               "value": "{{startTime}}",
+              "key": "startTime",
               "type": "text"
             },
             {
-              "key": "endTime",
               "value": "{{endTime}}",
+              "key": "endTime",
               "type": "text"
             },
             {
@@ -1135,36 +1031,44 @@
               "src": "D:/HK1-2026_2027/Do_an_nganh/project/backend/.tmp/postman-files/banner.png"
             }
           ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/events",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events"
+          ]
         }
       },
       "event": [
         {
-          "listen": "prerequest",
           "script": {
-            "type": "text/javascript",
             "exec": [
               "pm.variables.set(\"startTime\",new Date(Date.now()+86400000).toISOString());",
               "pm.variables.set(\"endTime\",new Date(Date.now()+90000000).toISOString());"
-            ]
-          }
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "prerequest"
         },
         {
-          "listen": "test",
           "script": {
-            "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
               "if(pm.response.code===201) pm.environment.set(\"crudId\",pm.response.json().data.event_id);"
-            ]
-          }
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
         }
       ]
     },
     {
-      "name": "Draft cannot cancel directly",
+      "name": "21 - Publish event before cancellation",
       "request": {
-        "method": "PATCH",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -1175,49 +1079,7 @@
             }
           ]
         },
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"status\": \"cancelled\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Publish cancellation fixture",
-      "request": {
         "method": "PATCH",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{accessToken}}",
-              "type": "string"
-            }
-          ]
-        },
         "header": [
           {
             "key": "Content-Type",
@@ -1232,25 +1094,34 @@
               "language": "json"
             }
           }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/events/{{crudId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events",
+            "{{crudId}}"
+          ]
         }
       },
       "event": [
         {
-          "listen": "test",
           "script": {
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
             ]
-          }
+          },
+          "listen": "test"
         }
       ]
     },
     {
-      "name": "Cancel published",
+      "name": "22 - Cancel event",
       "request": {
-        "method": "PATCH",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -1261,6 +1132,7 @@
             }
           ]
         },
+        "method": "PATCH",
         "header": [
           {
             "key": "Content-Type",
@@ -1275,29 +1147,50 @@
               "language": "json"
             }
           }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/events/{{crudId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events",
+            "{{crudId}}"
+          ]
         }
       },
       "event": [
         {
-          "listen": "test",
           "script": {
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
             ]
-          }
+          },
+          "listen": "test"
         }
       ]
     },
     {
-      "name": "Cancelled stays visible in detail",
+      "name": "23 - View cancelled event",
       "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
         "auth": {
           "type": "noauth"
         },
-        "header": []
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/events/{{crudId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events",
+            "{{crudId}}"
+          ]
+        }
       },
       "event": [
         {
@@ -1313,33 +1206,46 @@
       ]
     },
     {
-      "name": "Cancelled not in public list",
+      "name": "24 - List public events after cancellation",
       "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/events?q={{crudName}}",
         "auth": {
           "type": "noauth"
         },
-        "header": []
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/events?q={{crudName}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events"
+          ],
+          "query": [
+            {
+              "key": "q",
+              "value": "{{crudName}}"
+            }
+          ]
+        }
       },
       "event": [
         {
-          "listen": "test",
           "script": {
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
               "pm.test(\"Empty\",()=>pm.expect(pm.response.json().data.total).to.eql(0));"
             ]
-          }
+          },
+          "listen": "test"
         }
       ]
     },
     {
-      "name": "Cancelled cannot edit",
+      "name": "25 - Delete cancelled event",
       "request": {
-        "method": "PATCH",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
         "auth": {
           "type": "bearer",
           "bearer": [
@@ -1350,60 +1256,127 @@
             }
           ]
         },
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"name\": \"edited\"\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Delete cancelled fixture",
-      "request": {
         "method": "DELETE",
-        "url": "{{baseUrl}}/api/events/{{crudId}}",
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{accessToken}}",
-              "type": "string"
-            }
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/events/{{crudId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "events",
+            "{{crudId}}"
           ]
-        },
-        "header": []
+        }
       },
       "event": [
         {
           "listen": "test",
           "script": {
-            "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
-            ]
+            ],
+            "type": "text/javascript"
           }
+        }
+      ]
+    },
+    {
+      "name": "26 - Refresh session",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/refresh",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "refresh"
+          ]
+        },
+        "description": "Chạy Login của tài khoản muốn dùng trước. Postman tự gửi refresh_token từ cookie jar; không nhập token vào body. Cookie thuộc tài khoản login gần nhất. Request tự lưu sessionAccessToken, sessionUser và cập nhật biến token tương ứng role."
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.environment.unset(\"sessionAccessToken\");",
+              "pm.environment.unset(\"sessionUser\");"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Refresh 200\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const d = pm.response.json().data;",
+              "  pm.test(\"Access token and user\", () => { pm.expect(d.accessToken).to.be.a(\"string\").and.not.empty; pm.expect(d.user.user_id).to.be.a(\"string\"); pm.expect(d).not.to.have.property(\"refreshToken\"); });",
+              "  pm.environment.set(\"sessionAccessToken\", d.accessToken);",
+              "  pm.environment.set(\"sessionUser\", JSON.stringify(d.user));",
+              "  const key = {admin:\"accessToken\",moderator:\"moderatorToken\",user:\"userToken\"}[d.user.role];",
+              "  if (key) pm.environment.set(key, d.accessToken);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "27 - Get current user",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{sessionAccessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "me"
+          ]
+        },
+        "description": "Chạy request 38 trước để có sessionAccessToken. Lấy hồ sơ tài khoản vừa refresh; có thể gọi lại khi cần dữ liệu hồ sơ mới."
+      },
+      "event": [
+        {
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Profile 200\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const user = pm.response.json().data;",
+              "  const previous = pm.environment.get(\"sessionUser\");",
+              "  pm.test(\"Same user\", () => { if (previous) pm.expect(user.user_id).to.eql(JSON.parse(previous).user_id); });",
+              "  pm.test(\"No password\", () => pm.expect(user).not.to.have.property(\"password\"));",
+              "  pm.environment.set(\"sessionUser\", JSON.stringify(user));",
+              "}"
+            ]
+          },
+          "listen": "test"
         }
       ]
     }

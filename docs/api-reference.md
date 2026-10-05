@@ -289,7 +289,7 @@ Response JSON gồm `success`, `statusCode`, `message`, `data`, `timestamp`.
 
 Sự kiện trong data hoặc items có đủ: event_id, name, shortDescription, description,
 thumbnailUrl, bannerUrl, startTime, endTime, venueName, address, categoryId, status,
-phase, createdAt và updatedAt. POST/PATCH và route manage thêm createdBy.
+phase, isPinned, pinnedAt, createdAt và updatedAt. POST/PATCH và route manage thêm createdBy.
 Mô tả và URL ảnh có thể null theo schema; event vừa tạo thành công có hai URL ảnh.
 Response không lồng entity User hoặc category; categoryId là chuỗi tham chiếu.
 
@@ -304,6 +304,16 @@ Chi tiết cho FE, gồm ví dụ JSON đầy đủ:
 [detail manage](./events-api.md#detail-manage), [sửa](./events-api.md#update),
 [xóa](./events-api.md#delete), [ảnh public](./events-api.md#image-public),
 [ảnh manage](./events-api.md#image-manage).
+
+### Ghim sự kiện
+
+| API | Quyền | Đầu vào | Response thành công |
+| --- | --- | --- | --- |
+| [GET /api/events/pinned](./events-api.md#pinned) | Public | Không cần token, body/query | 200; data là mảng tối đa 4 sự kiện public, ghim gần nhất trước |
+| [PATCH /api/events/:id/pin](./events-api.md#pin) | ADMIN, MODERATOR | Bearer; path id; JSON { "isPinned": true } hoặc false | 200; data là sự kiện quản lý đầy đủ, thêm isPinned và pinnedAt |
+
+Chỉ published chưa kết thúc mới được ghim. Hết hạn/hủy không chiếm suất; không tự
+bù sự kiện chưa ghim. API sửa nội dung không nhận trường ghim. Bỏ ghim đặt pinnedAt=null.
 
 ## 4. Thể loại sự kiện (`/api/event-categories`)
 

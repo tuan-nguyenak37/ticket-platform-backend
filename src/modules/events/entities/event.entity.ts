@@ -18,6 +18,7 @@ import { EventStatus } from './enums/event-status.enum';
 @Entity('events')
 @Check('"endTime" > "startTime"')
 @Index(['status', 'startTime'])
+@Index('IDX_events_pinned', ['isPinned', 'status', 'endTime'])
 export class Event {
   @PrimaryColumn({
     type: 'varchar',
@@ -98,6 +99,12 @@ export class Event {
     default: EventStatus.DRAFT,
   })
   status!: EventStatus;
+
+  @Column({ type: 'boolean', default: false })
+  isPinned!: boolean;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  pinnedAt!: Date | null;
 
   @Column({
     type: 'varchar',

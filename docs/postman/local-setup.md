@@ -1,13 +1,36 @@
 # Postman local Events
 
-Workspace: nesjs. Collection: Backend - Events. Environment: Backend Local - Events.
+Workspace: nesjs. Environment: Backend Local - Events.
 baseUrl: http://localhost:7000 (không thêm /api).
 
-Collection bổ sung: **Backend - Events CRUD**, dùng cùng environment và chạy theo
-số thứ tự. Nó tạo hai event riêng qua biến crudId, sửa rồi xóa; không xóa event
-của lượt tạo trước đó. Không chạy đồng thời hai collection vì login mới thu hồi
-token của phiên trước. CRUD đã đạt 37 request, 48 assertions; 5 file ảnh phát
-sinh đều được dọn sau thay ảnh/xóa.
+## Collection hiện tại — 05/10/2026
+
+Các collection chỉ giữ request hợp lệ; đã bỏ request cố tình gửi sai dữ liệu hoặc
+gọi API bằng quyền không phù hợp. Script tự lưu token/ID và các kiểm tra response
+thành công vẫn được giữ.
+
+| Collection | Số request | Nội dung |
+| --- | --- | --- |
+| Backend - Auth | 4 | Login, refresh bằng cookie, lấy user hiện tại, logout |
+| Backend - Events | 12 | Category public, login theo role, tạo sự kiện, đọc ảnh và ghim/bỏ ghim |
+| Backend - Events CRUD | 27 | Category public, CRUD, ghim/bỏ ghim, refresh và lấy user |
+
+**Backend - Auth** thay cho tên cũ Backend - Login regression. Login dùng
+userEmail/userPassword trong environment, tự lưu sessionAccessToken cho các bước sau.
+
+**Backend - Events CRUD** dùng cùng environment và chạy theo số thứ tự. Nó tạo hai
+event riêng qua biến crudId, sửa rồi xóa; không xóa event của lượt tạo trước đó.
+Không chạy đồng thời các collection vì login mới thu hồi token của phiên trước.
+
+Lượt cập nhật này đã đọc lại cấu hình qua MCP để kiểm tra URL, auth, script,
+body và đường dẫn ảnh; không chạy request nghiệp vụ hoặc Newman.
+
+Luồng ghim dùng ba request Pin published event → List pinned events (public) →
+Unpin published event (MODERATOR), sau khi sự kiện được công bố và trước bước xóa
+trong CRUD. Cần còn ít nhất một suất trong giới hạn 4; collection không tự bỏ ghim
+sự kiện khác. Bản Events dùng eventId, bản CRUD dùng crudId.
+Database tắt synchronize cần áp dụng [SQL ghim](../event-pinning.sql) trước khi
+khởi động phiên bản backend có chức năng ghim. Lượt này không chạy SQL hoặc seed.
 
 ## Chạy trên máy hiện tại
 
@@ -17,7 +40,9 @@ sinh đều được dọn sau thay ảnh/xóa.
 3. Chọn environment Backend Local - Events, refresh collection để nhận cấu hình mới.
 4. Trong Settings > General, đặt Working directory thành thư mục backend:
    `D:/HK1-2026_2027/Do_an_nganh/project/backend` nếu Postman chặn đọc file mẫu.
-5. Chạy folder 01 - Login, sau đó 02 - Events. Token hết hạn thì chạy lại Login.
+5. Với Backend - Events, gọi List active event categories (public) trước, rồi
+   chạy folder 01 - Login và 02 - Events. Với CRUD/Auth, làm theo số thứ tự.
+   Token hết hạn thì chạy lại Login hoặc dùng refresh bằng cookie.
 
 Các request đã có form-data, Bearer và script lưu token/ID vào environment.
 Ảnh mẫu đã gán đường dẫn tuyệt đối ở `.tmp/postman-files/thumbnail.png` và
@@ -31,8 +56,11 @@ local. Environment đã điền thông tin test; mật khẩu/token đánh dấu
 
 ## Kết quả xác minh 01/10/2026
 
+Các kết quả dưới đây thuộc phiên bản collection trước khi lược bỏ request kiểm thử lỗi.
+
 Newman local: 17 request, 25 assertions đạt, 0 failures. Bao gồm login ba role,
 tạo published/draft, phân quyền, validation và đọc/chặn ảnh theo trạng thái.
+CRUD đã đạt 37 request, 48 assertions; 5 file ảnh phát sinh được dọn sau thay ảnh/xóa.
 Đã đọc lại collection qua MCP để xác nhận script, Bearer và các field được lưu.
 Chưa xác nhận trực tiếp trạng thái Desktop Agent hoặc Working directory trên UI
 Postman của người dùng.

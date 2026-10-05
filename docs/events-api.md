@@ -12,6 +12,8 @@ Cập nhật theo controller, DTO và service ngày **05/10/2026**. Tài liệu 
 
 | Method | Đường dẫn | Quyền | Chức năng |
 | --- | --- | --- | --- |
+| `GET` | [`/api/events/pinned`](#pinned) | Public | Tối đa 4 sự kiện ghim còn hiệu lực |
+| `PATCH` | [`/api/events/:id/pin`](#pin) | ADMIN, MODERATOR | Ghim hoặc bỏ ghim |
 | `POST` | [`/api/events`](#create) | ADMIN, MODERATOR | Tạo sự kiện |
 | `GET` | [`/api/events`](#list-public) | Public | Danh sách công khai |
 | `GET` | [`/api/events/:id`](#detail-public) | Public | Chi tiết công khai |
@@ -53,8 +55,10 @@ Các ví dụ dưới đây là **toàn bộ response**, gồm cả lớp bọc.
 | `address` | string | Địa chỉ |
 | `categoryId` | string | ID category; response không kèm đối tượng category |
 | `status` | string | `draft`, `published` hoặc `cancelled` |
+| `isPinned` | boolean | Cờ ghim lưu trong database; sự kiện kết thúc có thể vẫn giữ cờ nhưng không chiếm suất/hiển thị trong danh sách ghim |
+| `pinnedAt` | string hoặc null | Thời gian ghim ISO 8601 UTC; null khi chưa ghim hoặc đã bỏ ghim |
 | `phase` | string | `upcoming`, `ongoing` hoặc `ended`, tính lúc trả response |
-| `createdBy` | string | ID người tạo; có trong POST/PATCH và API manage; vắng mặt trong API public |
+| `createdBy` | string | ID người tạo; có trong POST/PATCH (bao gồm ghim) và API manage; vắng mặt trong API public |
 | `createdAt` | string | Thời gian tạo, ISO 8601 UTC |
 | `updatedAt` | string | Thời gian cập nhật, ISO 8601 UTC |
 
@@ -106,7 +110,9 @@ Các ví dụ dưới đây là **toàn bộ response**, gồm cả lớp bọc.
     "phase": "upcoming",
     "createdBy": "user_7f8a9b0c1d2e3f4a",
     "createdAt": "2026-10-05T03:00:00.000Z",
-    "updatedAt": "2026-10-05T03:00:00.000Z"
+    "updatedAt": "2026-10-05T03:00:00.000Z",
+    "isPinned": false,
+    "pinnedAt": null
   },
   "timestamp": "2026-10-05T04:00:00.000Z"
 }
@@ -157,7 +163,9 @@ Danh sách public chỉ chứa published và không nhận query status. Sắp t
         "status": "published",
         "phase": "upcoming",
         "createdAt": "2026-10-05T03:00:00.000Z",
-        "updatedAt": "2026-10-05T03:00:00.000Z"
+        "updatedAt": "2026-10-05T03:00:00.000Z",
+        "isPinned": false,
+        "pinnedAt": null
       }
     ],
     "total": 1,
@@ -208,7 +216,9 @@ Không có trường totalPages; FE tính `Math.ceil(total / limit)` nếu cần
     "status": "published",
     "phase": "upcoming",
     "createdAt": "2026-10-05T03:00:00.000Z",
-    "updatedAt": "2026-10-05T03:00:00.000Z"
+    "updatedAt": "2026-10-05T03:00:00.000Z",
+    "isPinned": false,
+    "pinnedAt": null
   },
   "timestamp": "2026-10-05T04:00:00.000Z"
 }
@@ -266,7 +276,9 @@ Phạm vi gồm mọi người tạo. Sắp xếp và ý nghĩa phân trang gi�
         "phase": "upcoming",
         "createdBy": "user_7f8a9b0c1d2e3f4a",
         "createdAt": "2026-10-05T03:00:00.000Z",
-        "updatedAt": "2026-10-05T03:00:00.000Z"
+        "updatedAt": "2026-10-05T03:00:00.000Z",
+        "isPinned": false,
+        "pinnedAt": null
       }
     ],
     "total": 1,
@@ -311,7 +323,9 @@ Mỗi item có createdBy; danh sách có thể gồm draft, published và cancel
     "phase": "upcoming",
     "createdBy": "user_7f8a9b0c1d2e3f4a",
     "createdAt": "2026-10-05T03:00:00.000Z",
-    "updatedAt": "2026-10-05T03:00:00.000Z"
+    "updatedAt": "2026-10-05T03:00:00.000Z",
+    "isPinned": false,
+    "pinnedAt": null
   },
   "timestamp": "2026-10-05T04:00:00.000Z"
 }
@@ -402,7 +416,9 @@ Ví dụ hủy:
     "phase": "upcoming",
     "createdBy": "user_7f8a9b0c1d2e3f4a",
     "createdAt": "2026-10-05T03:00:00.000Z",
-    "updatedAt": "2026-10-05T04:00:00.000Z"
+    "updatedAt": "2026-10-05T04:00:00.000Z",
+    "isPinned": false,
+    "pinnedAt": null
   },
   "timestamp": "2026-10-05T04:00:00.000Z"
 }
@@ -520,6 +536,131 @@ Cache-Control: no-store
 Response ảnh không có các trường JSON `success`, `data`, `timestamp`.
 
 FE có thể fetch ảnh quản lý với Authorization rồi dùng Blob URL để preview. Đường dẫn quản lý không tự thay thế thumbnailUrl/bannerUrl trong JSON.
+
+
+<a id="pinned"></a>
+## 10. GET /api/events/pinned — Danh sách sự kiện ghim
+
+**Quyền:** Public, không cần đăng nhập. Không có path param, body hoặc query nghiệp vụ.
+Giới hạn cố định 4; không nhận lựa chọn phân trang hay số lượng từ client.
+
+Chỉ trả sự kiện có isPinned=true, status=published và endTime lớn hơn thời gian hiện tại.
+Bao gồm sắp/đang diễn ra; sự kiện kết thúc/hủy không được trả về. Sắp pinnedAt giảm dần,
+rồi event_id tăng dần. Không tự bù sự kiện chưa ghim khi thiếu 4 phần tử.
+
+### Response 200
+
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Request successful",
+  "data": [
+    {
+      "event_id": "event_k8m2n4p6q8r0s2t4",
+      "name": "Concert mùa thu 2026",
+      "shortDescription": "Đêm nhạc trực tiếp",
+      "description": "Thông tin chi tiết về chương trình.",
+      "thumbnailUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/thumbnail?file=9c7e3f81-a1b2-4c3d-8e5f-0a1b2c3d4e5f.jpg",
+      "bannerUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/banner?file=4a2b1c8e-5f6a-4b3c-9d0e-1f2a3b4c5d6e.png",
+      "startTime": "2026-11-20T12:00:00.000Z",
+      "endTime": "2026-11-20T16:00:00.000Z",
+      "venueName": "Nhà hát thành phố",
+      "address": "Hà Nội",
+      "categoryId": "event_cat_music",
+      "status": "published",
+      "phase": "upcoming",
+      "createdAt": "2026-10-05T03:00:00.000Z",
+      "updatedAt": "2026-10-05T03:00:00.000Z",
+      "isPinned": true,
+      "pinnedAt": "2026-10-05T04:00:00.000Z"
+    }
+  ],
+  "timestamp": "2026-10-05T04:00:00.000Z"
+}
+```
+
+Data là mảng sự kiện public đầy đủ, không có createdBy hoặc các trường phân trang.
+Nếu không có sự kiện phù hợp, data là [].
+
+<a id="pin"></a>
+## 11. PATCH /api/events/:id/pin — Ghim hoặc bỏ ghim
+
+**Quyền:** ADMIN, MODERATOR quản lý mọi sự kiện.
+Gửi Authorization: Bearer <accessToken> và Content-Type: application/json.
+Không có query nghiệp vụ; không upload ảnh ở API này.
+
+| Tham số | Vị trí | Kiểu | Bắt buộc | Ý nghĩa |
+| --- | --- | --- | --- | --- |
+| `id` | Path | string | Có | event_id của sự kiện |
+| `isPinned` | Body | boolean | Có | true để ghim, false để bỏ ghim |
+
+Body chỉ có isPinned; dùng boolean JSON, không dùng chuỗi "true"/"false", null hoặc số.
+pinnedAt do server đặt. API POST/PATCH nội dung sự kiện không nhận hai trường ghim.
+
+Ví dụ ghim:
+
+```json
+{ "isPinned": true }
+```
+
+Ví dụ bỏ ghim:
+
+```json
+{ "isPinned": false }
+```
+
+Tối đa 4 suất ghim còn hiệu lực. Ghim chỉ áp dụng cho published chưa kết thúc,
+kể cả đang diễn ra. Bỏ ghim được ở mọi trạng thái. Khi đủ suất, không tự thay thế sự kiện khác.
+Gửi true lại cho sự kiện đang ghim và còn hiệu lực giữ nguyên pinnedAt, không đổi thứ tự.
+Muốn đưa lên đầu thì bỏ ghim rồi ghim lại.
+
+### Response 200
+
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Request successful",
+  "data": {
+    "event_id": "event_k8m2n4p6q8r0s2t4",
+    "name": "Concert mùa thu 2026",
+    "shortDescription": "Đêm nhạc trực tiếp",
+    "description": "Thông tin chi tiết về chương trình.",
+    "thumbnailUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/thumbnail?file=9c7e3f81-a1b2-4c3d-8e5f-0a1b2c3d4e5f.jpg",
+    "bannerUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/banner?file=4a2b1c8e-5f6a-4b3c-9d0e-1f2a3b4c5d6e.png",
+    "startTime": "2026-11-20T12:00:00.000Z",
+    "endTime": "2026-11-20T16:00:00.000Z",
+    "venueName": "Nhà hát thành phố",
+    "address": "Hà Nội",
+    "categoryId": "event_cat_music",
+    "status": "published",
+    "phase": "upcoming",
+    "createdBy": "user_7f8a9b0c1d2e3f4a",
+    "createdAt": "2026-10-05T03:00:00.000Z",
+    "updatedAt": "2026-10-05T03:00:00.000Z",
+    "isPinned": true,
+    "pinnedAt": "2026-10-05T04:00:00.000Z"
+  },
+  "timestamp": "2026-10-05T04:00:00.000Z"
+}
+```
+
+Bỏ ghim trả cùng cấu trúc với isPinned=false và pinnedAt=null.
+Response có createdBy như các thao tác quản lý khác.
+
+### Hiệu lực và triển khai
+
+Giới hạn 4 tính các sự kiện đang có hiệu lực, không phải tổng số cờ isPinned=true
+trong database. Hết endTime tự ngừng hiển thị/chiếm suất dù cờ lưu còn nguyên;
+không chạy job nền. Hủy sự kiện đặt isPinned=false và pinnedAt=null trong cùng
+transaction; xóa sự kiện cũng giải phóng suất.
+
+Ghim/bỏ ghim dùng transaction READ COMMITTED với khóa advisory PostgreSQL chung,
+khóa hàng sự kiện rồi mới kiểm tra/đếm/cập nhật. Audit action: events.pin.update.
+
+Khi DB_SYNCHRONIZE tắt, áp dụng [SQL bổ sung](./event-pinning.sql) trước khi chạy
+phiên bản backend mới. Dữ liệu cũ mặc định chưa ghim; không cần seed.
 
 ## Tài liệu liên quan
 

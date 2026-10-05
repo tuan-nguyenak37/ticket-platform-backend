@@ -16,6 +16,8 @@ export class EventResponseDto {
       address: event.address,
       categoryId: event.categoryId,
       status: event.status,
+      isPinned: event.isPinned,
+      pinnedAt: event.pinnedAt,
       phase:
         now < event.startTime
           ? EventPhase.UPCOMING

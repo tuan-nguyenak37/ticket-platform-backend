@@ -71,7 +71,7 @@ Response không chứa danh sách sự kiện, số lượng sự kiện hoặc 
 - Category đang hoạt động vẫn hiển thị dù chưa có sự kiện; kết quả tìm sự kiện khi đó có thể rỗng.
 - Nếu category ngừng hoạt động sau lúc tải danh sách, API tạo/cập nhật sự kiện vẫn kiểm tra lại category ở backend.
 
-Request Postman local: **List active event categories (public)** trong
+Request Postman: **01 - List active event categories (public)** trong
 [collection Events CRUD](./postman/events-crud.postman_collection.json), chọn **No Auth**.
 
 Xem thêm [API sự kiện](./events-api.md).

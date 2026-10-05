@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource, In, QueryFailedError } from 'typeorm';
+import { DataSource, In, MoreThan, QueryFailedError } from 'typeorm';
 import { UploadsService } from '../../common/uploads/uploads.service';
 import { generateId } from '../../common/utils/generateId';
 import type { Principal } from '../auth/authorization/principal';
@@ -16,6 +16,7 @@ import { Event } from './entities/event.entity';
 import { EventCategory } from './entities/event-category.entity';
 import { EventStatus } from './entities/enums/event-status.enum';
 import { UpdateEventDto } from './dto/update-event.dto';
+import { UpdateEventPinDto } from './dto/update-event-pin.dto';
 import {
   EventPhase,
   ListEventsDto,
@@ -26,6 +27,11 @@ export interface EventImages {
   thumbnail?: Express.Multer.File[];
   banner?: Express.Multer.File[];
 }
+
+const MAX_PINNED_EVENTS = 4;
+// Shared transaction lock for event pin capacity across all application instances.
+const EVENT_PIN_LOCK_NAMESPACE = 0x45564e54;
+const EVENT_PIN_LOCK_KEY = 1;
 
 @Injectable()
 export class EventsService {
@@ -42,6 +48,66 @@ export class EventsService {
 
   async list(query: ListEventsDto) {
     return this.listRecords(query, false);
+  }
+
+  async listPinned() {
+    const now = new Date();
+    const events = await this.dataSource.getRepository(Event).find({
+      where: {
+        isPinned: true,
+        status: EventStatus.PUBLISHED,
+        endTime: MoreThan(now),
+      },
+      order: { pinnedAt: 'DESC', event_id: 'ASC' },
+      take: MAX_PINNED_EVENTS,
+    });
+    return events.map((event) => EventResponseDto.public(event, now));
+  }
+
+  async updatePin(actor: Principal, id: string, dto: UpdateEventPinDto) {
+    this.requireManager(actor);
+    return this.dataSource.transaction('READ COMMITTED', async (manager) => {
+      // Always acquire the shared lock before the event row lock. READ COMMITTED
+      // lets the count see pins committed by the previous lock holder.
+      await manager.query('SELECT pg_advisory_xact_lock($1, $2)', [
+        EVENT_PIN_LOCK_NAMESPACE,
+        EVENT_PIN_LOCK_KEY,
+      ]);
+      const event = await manager.findOne(Event, {
+        where: { event_id: id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!event) throw new NotFoundException('Event not found');
+
+      const now = new Date();
+      if (
+        dto.isPinned &&
+        (event.status !== EventStatus.PUBLISHED || event.endTime <= now)
+      ) {
+        throw new ConflictException(
+          'Only published events that have not ended can be pinned',
+        );
+      }
+      if (event.isPinned === dto.isPinned) {
+        return EventResponseDto.from(event, now);
+      }
+      if (dto.isPinned) {
+        const count = await manager.count(Event, {
+          where: {
+            isPinned: true,
+            status: EventStatus.PUBLISHED,
+            endTime: MoreThan(now),
+          },
+        });
+        if (count >= MAX_PINNED_EVENTS) {
+          throw new ConflictException('At most four active events can be pinned');
+        }
+      }
+
+      event.isPinned = dto.isPinned;
+      event.pinnedAt = dto.isPinned ? now : null;
+      return EventResponseDto.from(await manager.save(event), now);
+    });
   }
 
   async manageList(actor: Principal, query: ManageEventsDto) {
@@ -228,6 +294,10 @@ export class EventsService {
         event.startTime = startTime;
         event.endTime = endTime;
         event.status = nextStatus;
+        if (nextStatus === EventStatus.CANCELLED) {
+          event.isPinned = false;
+          event.pinnedAt = null;
+        }
         for (const kind of ['thumbnail', 'banner'] as const) {
           const file = files[kind]?.[0];
           if (!file) continue;
@@ -353,6 +423,8 @@ export class EventsService {
           address: dto.address,
           categoryId: category.category_id,
           status: dto.status,
+          isPinned: false,
+          pinnedAt: null,
           startTime,
           endTime,
           createdBy: actor.user_id,

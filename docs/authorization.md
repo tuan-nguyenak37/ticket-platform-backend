@@ -8,6 +8,7 @@ Backend hiện có Auth, Users và Events. Ba role giữ nguyên: USER, MODERATO
 - `GET /api/event-categories` là public: khách và mọi role đều xem được danh sách category đang hoạt động; không cấp quyền tạo/sửa/xóa category.
 - ADMIN có thêm quyền tạo, xem danh sách, xem chi tiết và sửa tên user.
 - MODERATOR và ADMIN được tạo, xem quản lý, sửa và xóa mọi sự kiện, kể cả do người khác tạo và sự kiện published. MODERATOR không được quản lý user/category hoặc kiểm duyệt tin bán.
+- ADMIN/MODERATOR được ghim/bỏ ghim qua PATCH /api/events/:id/pin; GET /api/events/pinned là public và chỉ trả tối đa 4 sự kiện ghim còn hiệu lực.
 - Không có API đổi role, khóa/mở khóa hoặc xóa tài khoản.
 - Chính sách nằm trong code; chưa có bảng permission hoặc giao diện quản trị quyền.
 
@@ -107,6 +108,7 @@ Các action đang có:
 | users.update | Admin sửa tên tài khoản |
 | events.create | ADMIN/MODERATOR tạo sự kiện, target ID là event_id khi thành công |
 | events.update | ADMIN/MODERATOR sửa nội dung/ảnh hoặc chuyển trạng thái sự kiện |
+| events.pin.update | ADMIN/MODERATOR ghim hoặc bỏ ghim; không đổi quyền sửa nội dung sự kiện |
 | events.delete | ADMIN/MODERATOR xóa sự kiện ở mọi trạng thái |
 
 result gồm allowed, denied, failed. AuditService chỉ ghi danh sách trường nêu trên; không ghi body, header, password, hash, JWT hoặc cookie. Middleware tự sinh request ID và trả X-Request-Id; không tin request ID tùy ý từ client.

@@ -26,6 +26,7 @@ import { EventsService } from './events.service';
 import type { EventImages } from './events.service';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { ListEventsDto, ManageEventsDto } from './dto/list-events.dto';
+import { UpdateEventPinDto } from './dto/update-event-pin.dto';
 
 @Controller('events')
 export class EventsController {
@@ -35,6 +36,23 @@ export class EventsController {
   @Public()
   list(@Query() query: ListEventsDto) {
     return this.eventsService.list(query);
+  }
+
+  @Get('pinned')
+  @Public()
+  pinned() {
+    return this.eventsService.listPinned();
+  }
+
+  @Patch(':id/pin')
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @Audit('events.pin.update')
+  updatePin(
+    @CurrentUser() actor: Principal,
+    @Param('id') id: string,
+    @Body() dto: UpdateEventPinDto,
+  ) {
+    return this.eventsService.updatePin(actor, id, dto);
   }
 
   @Get('manage')

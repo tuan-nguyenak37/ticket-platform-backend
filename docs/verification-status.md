@@ -65,3 +65,29 @@ POST /api/events cho ADMIN/MODERATOR và GET ảnh công khai đã được tri�
 Đã chạy TypeScript và build; chưa chạy unit/HTTP test hoặc collection Events theo yêu cầu.
 Chưa xác minh runtime PostgreSQL, rollback file hoặc upload bằng Postman.
 Không chạy seed/migration và không thay đổi schema trong đợt này.
+
+## Ghim sự kiện — 05/10/2026
+
+Đã thêm PATCH /api/events/:id/pin cho ADMIN/MODERATOR và GET /api/events/pinned
+public. Tối đa 4 suất ghim published chưa kết thúc; ghim lặp giữ thứ tự; hủy đồng
+thời bỏ ghim. Transaction READ COMMITTED và khóa advisory chung bảo vệ giới hạn.
+
+- Build (`npm run build`): đạt.
+- TypeScript (`tsc --noEmit --incremental false`): đạt.
+- Đã đọc lại Postman workspace: Events 12 request, CRUD 27 request; token,
+  script, body và file của các request cũ được giữ. Ba request mới nằm sau công bố
+  và trước xóa trong CRUD. Đã đồng bộ collection trong repo.
+- Không chạy unit/HTTP test, Newman, SQL hoặc seed trong lượt này.
+- [SQL cộng thêm cột/index](./event-pinning.sql) phải áp dụng trước phiên bản mới
+  khi DB_SYNCHRONIZE tắt; dữ liệu cũ mặc định chưa ghim.
+
+Các tình huống bàn giao chưa chạy trên runtime/database:
+
+- ADMIN/MODERATOR ghim được mọi sự kiện phù hợp; USER/khách không ghi được.
+- Ghim 4 sự kiện, từ chối sự kiện thứ 5; hai request tranh suất cuối không vượt 4.
+- Ghim lặp giữ pinnedAt; bỏ ghim rồi ghim lại đưa sự kiện lên đầu.
+- Chỉ published chưa kết thúc xuất hiện, bao gồm đang diễn ra; hết giờ không chiếm suất.
+- Hủy đồng thời xóa cờ/thời gian ghim; xóa giải phóng suất; bỏ ghim được ở mọi trạng thái.
+- Danh sách trả 0–4 phần tử, đúng thứ tự, không chứa createdBy, không tự bù sự kiện khác.
+- Body ghim bắt buộc boolean; API nội dung không nhận isPinned/pinnedAt;
+  /api/events/pinned không bị hiểu nhầm thành route /:id.
