@@ -3,6 +3,12 @@
 Workspace: nesjs. Collection: Backend - Events. Environment: Backend Local - Events.
 baseUrl: http://localhost:7000 (không thêm /api).
 
+Collection bổ sung: **Backend - Events CRUD**, dùng cùng environment và chạy theo
+số thứ tự. Nó tạo hai event riêng qua biến crudId, sửa rồi xóa; không xóa event
+của lượt tạo trước đó. Không chạy đồng thời hai collection vì login mới thu hồi
+token của phiên trước. CRUD đã đạt 37 request, 48 assertions; 5 file ảnh phát
+sinh đều được dọn sau thay ảnh/xóa.
+
 ## Chạy trên máy hiện tại
 
 1. Khởi động backend bằng `npm run start:dev` nếu chưa chạy.

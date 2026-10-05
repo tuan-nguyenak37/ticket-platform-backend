@@ -1,5 +1,12 @@
 # Trạng thái kiểm chứng và bàn giao
 
+## Cập nhật CRUD Events — 01/10/2026
+
+Build và TypeScript đạt. Newman local đạt 37 request/48 assertions; đã kiểm tra
+quyền ADMIN/MODERATOR/USER, CRUD, bộ lọc, status, thay ảnh và dọn cả 5 file phát
+sinh sau xóa. Chưa kiểm tra cạnh tranh cập nhật thực tế, lỗi I/O hoặc rollback do
+sự cố database. Các mục Auth/Users bên dưới là lịch sử kiểm chứng riêng.
+
 Cập nhật ngày 30/09/2026. Tài liệu này phân biệt code đã bổ sung và kiểm chứng thực sự đã hoàn thành; không phải báo cáo nghiệm thu toàn bộ.
 
 ## Kết quả đã ghi nhận trước khi dừng kiểm tra
