@@ -10,6 +10,7 @@ import { GlobalExceptionFilter } from './common/utils/filters/global-exception.f
 import { GlobalResponseInterceptor } from './common/utils/interceptors/global-response.interceptor';
 import { EventsModule } from './modules/events/events.module';
 import { UploadsModule } from './common/uploads/uploads.module';
+import { TicketsModule } from './modules/tickets/tickets.module';
 @Module({
   imports: [
     AppConfigModule,
@@ -18,6 +19,7 @@ import { UploadsModule } from './common/uploads/uploads.module';
     AuthModule,
     EventsModule,
     UploadsModule,
+    TicketsModule,
   ],
   controllers: [AppController],
   providers: [
