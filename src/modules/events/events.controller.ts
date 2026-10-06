@@ -67,15 +67,14 @@ export class EventsController {
     return this.eventsService.manageDetail(actor, id);
   }
 
-  @Get('manage/:id/images/:kind')
+  @Get('manage/:id/images/banner')
   @Roles(UserRole.ADMIN, UserRole.MODERATOR)
   async manageImage(
     @CurrentUser() actor: Principal,
     @Param('id') id: string,
-    @Param('kind') kind: string,
     @Res() response: Response,
   ) {
-    const image = await this.eventsService.manageImage(actor, id, kind);
+    const image = await this.eventsService.manageImage(actor, id);
     response.setHeader('Content-Type', image.mimetype);
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('Cache-Control', 'no-store');
@@ -120,14 +119,13 @@ export class EventsController {
     return this.eventsService.create(actor, dto, files);
   }
 
-  @Get(':id/images/:kind')
+  @Get(':id/images/banner')
   @Public()
   async image(
     @Param('id') id: string,
-    @Param('kind') kind: string,
     @Res() response: Response,
   ) {
-    const image = await this.eventsService.image(id, kind);
+    const image = await this.eventsService.image(id);
     response.setHeader('Content-Type', image.mimetype);
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('Cache-Control', 'no-store');

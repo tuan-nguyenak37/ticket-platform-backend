@@ -211,54 +211,44 @@
               "mode": "formdata",
               "formdata": [
                 {
-                  "value": "Sự kiện mẫu",
                   "type": "text",
-                  "key": "name"
+                  "key": "name",
+                  "value": "Sự kiện mẫu"
                 },
                 {
-                  "value": "Sự kiện kiểm tra API",
                   "type": "text",
-                  "key": "shortDescription"
+                  "key": "description",
+                  "value": "Nội dung văn bản thuần"
                 },
                 {
-                  "value": "Nội dung văn bản thuần",
                   "type": "text",
-                  "key": "description"
+                  "key": "startTime",
+                  "value": "{{startTime}}"
                 },
                 {
-                  "value": "{{startTime}}",
                   "type": "text",
-                  "key": "startTime"
+                  "key": "endTime",
+                  "value": "{{endTime}}"
                 },
                 {
-                  "value": "{{endTime}}",
                   "type": "text",
-                  "key": "endTime"
+                  "key": "venueName",
+                  "value": "Nhà hát"
                 },
                 {
-                  "value": "Nhà hát",
                   "type": "text",
-                  "key": "venueName"
+                  "key": "address",
+                  "value": "Hà Nội"
                 },
                 {
-                  "value": "Hà Nội",
                   "type": "text",
-                  "key": "address"
+                  "key": "categoryId",
+                  "value": "{{categoryId}}"
                 },
                 {
-                  "value": "{{categoryId}}",
                   "type": "text",
-                  "key": "categoryId"
-                },
-                {
-                  "value": "published",
-                  "type": "text",
-                  "key": "status"
-                },
-                {
-                  "type": "file",
-                  "key": "thumbnail",
-                  "src": "D:/HK1-2026_2027/Do_an_nganh/project/backend/.tmp/postman-files/thumbnail.png"
+                  "key": "status",
+                  "value": "published"
                 },
                 {
                   "type": "file",
@@ -310,58 +300,48 @@
               "mode": "formdata",
               "formdata": [
                 {
-                  "type": "text",
                   "key": "name",
+                  "type": "text",
                   "value": "Sự kiện mẫu"
                 },
                 {
-                  "type": "text",
-                  "key": "shortDescription",
-                  "value": "Sự kiện kiểm tra API"
-                },
-                {
-                  "type": "text",
                   "key": "description",
+                  "type": "text",
                   "value": "Nội dung văn bản thuần"
                 },
                 {
-                  "type": "text",
                   "key": "startTime",
+                  "type": "text",
                   "value": "{{startTime}}"
                 },
                 {
-                  "type": "text",
                   "key": "endTime",
+                  "type": "text",
                   "value": "{{endTime}}"
                 },
                 {
-                  "type": "text",
                   "key": "venueName",
+                  "type": "text",
                   "value": "Nhà hát"
                 },
                 {
-                  "type": "text",
                   "key": "address",
+                  "type": "text",
                   "value": "Hà Nội"
                 },
                 {
-                  "type": "text",
                   "key": "categoryId",
+                  "type": "text",
                   "value": "{{categoryId}}"
                 },
                 {
-                  "type": "text",
                   "key": "status",
+                  "type": "text",
                   "value": "published"
                 },
                 {
-                  "type": "file",
-                  "key": "thumbnail",
-                  "src": "D:/HK1-2026_2027/Do_an_nganh/project/backend/.tmp/postman-files/thumbnail.png"
-                },
-                {
-                  "type": "file",
                   "key": "banner",
+                  "type": "file",
                   "src": "D:/HK1-2026_2027/Do_an_nganh/project/backend/.tmp/postman-files/banner.png"
                 }
               ]
@@ -379,14 +359,14 @@
           },
           "event": [
             {
-              "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
                   "if (pm.response.code === 201) { const d = pm.response.json().data; pm.environment.set(d.status === \"draft\" ? \"draftId\" : \"eventId\", d.event_id); pm.test(\"No creator entity\", () => pm.expect(d).not.to.have.property(\"creator\")); }"
-                ]
-              }
+                ],
+                "type": "text/javascript"
+              },
+              "listen": "test"
             }
           ]
         },
@@ -410,53 +390,43 @@
               "formdata": [
                 {
                   "type": "text",
-                  "key": "name",
-                  "value": "Sự kiện mẫu"
+                  "value": "Sự kiện mẫu",
+                  "key": "name"
                 },
                 {
                   "type": "text",
-                  "key": "shortDescription",
-                  "value": "Sự kiện kiểm tra API"
+                  "value": "Nội dung văn bản thuần",
+                  "key": "description"
                 },
                 {
                   "type": "text",
-                  "key": "description",
-                  "value": "Nội dung văn bản thuần"
+                  "value": "{{startTime}}",
+                  "key": "startTime"
                 },
                 {
                   "type": "text",
-                  "key": "startTime",
-                  "value": "{{startTime}}"
+                  "value": "{{endTime}}",
+                  "key": "endTime"
                 },
                 {
                   "type": "text",
-                  "key": "endTime",
-                  "value": "{{endTime}}"
+                  "value": "Nhà hát",
+                  "key": "venueName"
                 },
                 {
                   "type": "text",
-                  "key": "venueName",
-                  "value": "Nhà hát"
+                  "value": "Hà Nội",
+                  "key": "address"
                 },
                 {
                   "type": "text",
-                  "key": "address",
-                  "value": "Hà Nội"
+                  "value": "{{categoryId}}",
+                  "key": "categoryId"
                 },
                 {
                   "type": "text",
-                  "key": "categoryId",
-                  "value": "{{categoryId}}"
-                },
-                {
-                  "type": "text",
-                  "key": "status",
-                  "value": "draft"
-                },
-                {
-                  "type": "file",
-                  "key": "thumbnail",
-                  "src": "D:/HK1-2026_2027/Do_an_nganh/project/backend/.tmp/postman-files/thumbnail.png"
+                  "value": "draft",
+                  "key": "status"
                 },
                 {
                   "type": "file",
@@ -490,37 +460,45 @@
           ]
         },
         {
-          "name": "Published thumbnail",
+          "name": "Draft banner (ADMIN)",
           "request": {
             "auth": {
-              "type": "noauth"
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/events/{{eventId}}/images/thumbnail",
+              "raw": "{{baseUrl}}/api/events/manage/{{draftId}}/images/banner",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "events",
-                "{{eventId}}",
+                "manage",
+                "{{draftId}}",
                 "images",
-                "thumbnail"
+                "banner"
               ]
             }
           },
           "event": [
             {
+              "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
                   "pm.test(\"Image response\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.match(/^image\\//));"
-                ]
-              },
-              "listen": "test"
+                ],
+                "type": "text/javascript"
+              }
             }
           ]
         },

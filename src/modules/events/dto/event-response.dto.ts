@@ -6,9 +6,7 @@ export class EventResponseDto {
     return {
       event_id: event.event_id,
       name: event.name,
-      shortDescription: event.shortDescription,
       description: event.description,
-      thumbnailUrl: event.thumbnailUrl,
       bannerUrl: event.bannerUrl,
       startTime: event.startTime,
       endTime: event.endTime,

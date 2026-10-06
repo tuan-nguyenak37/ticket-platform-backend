@@ -24,7 +24,6 @@ import {
 } from './dto/list-events.dto';
 
 export interface EventImages {
-  thumbnail?: Express.Multer.File[];
   banner?: Express.Multer.File[];
 }
 
@@ -189,8 +188,8 @@ export class EventsService {
     }
   }
 
-  private imageUrl(id: string, kind: string, filename: string) {
-    return `/api/events/${id}/images/${kind}?file=${filename}`;
+  private imageUrl(id: string, filename: string) {
+    return `/api/events/${id}/images/banner?file=${filename}`;
   }
 
   async update(
@@ -201,14 +200,13 @@ export class EventsService {
   ) {
     this.requireManager(actor);
     const changes = Object.keys(dto).filter((key) => dto[key] !== undefined);
-    if (!changes.length && !files.thumbnail?.length && !files.banner?.length) {
+    if (!changes.length && !files.banner?.length) {
       throw new BadRequestException('At least one field or image is required');
     }
-    for (const kind of ['thumbnail', 'banner'] as const) {
-      if (files[kind] && files[kind]!.length !== 1)
-        throw new BadRequestException('Only one image per field is allowed');
-      if (files[kind]?.[0]) this.uploads.validate(files[kind]![0], true);
+    if (files.banner && files.banner.length !== 1) {
+      throw new BadRequestException('Only one banner is allowed');
     }
+    if (files.banner?.[0]) this.uploads.validate(files.banner[0], true);
     const newFiles: string[] = [];
     const oldFiles: string[] = [];
     let result: ReturnType<typeof EventResponseDto.from>;
@@ -236,7 +234,6 @@ export class EventsService {
         const cancellationOnly =
           nextStatus === EventStatus.CANCELLED &&
           changes.every((key) => key === 'status') &&
-          !files.thumbnail &&
           !files.banner;
         if (
           event.status === EventStatus.PUBLISHED &&
@@ -284,7 +281,6 @@ export class EventsService {
         }
         for (const key of [
           'name',
-          'shortDescription',
           'description',
           'venueName',
           'address',
@@ -298,14 +294,12 @@ export class EventsService {
           event.isPinned = false;
           event.pinnedAt = null;
         }
-        for (const kind of ['thumbnail', 'banner'] as const) {
-          const file = files[kind]?.[0];
-          if (!file) continue;
-          const saved = await this.uploads.save(file, 'events');
+        if (files.banner?.[0]) {
+          const saved = await this.uploads.save(files.banner[0], 'events');
           newFiles.push(saved.filename);
-          const oldFile = this.filename(event[`${kind}Url`]);
+          const oldFile = this.filename(event.bannerUrl);
           if (oldFile) oldFiles.push(oldFile);
-          event[`${kind}Url`] = this.imageUrl(id, kind, saved.filename);
+          event.bannerUrl = this.imageUrl(id, saved.filename);
         }
         if (
           event.status === EventStatus.PUBLISHED &&
@@ -338,10 +332,9 @@ export class EventsService {
         });
         if (!event) throw new NotFoundException('Event not found');
         await manager.delete(Event, { event_id: id });
-        return [
-          this.filename(event.thumbnailUrl),
-          this.filename(event.bannerUrl),
-        ].filter((name): name is string => !!name);
+        return [this.filename(event.bannerUrl)].filter(
+          (name): name is string => !!name,
+        );
       });
     } catch (error) {
       if (
@@ -358,9 +351,9 @@ export class EventsService {
     return { event_id: id, message: 'Event deleted' };
   }
 
-  async manageImage(actor: Principal, id: string, kind: string) {
+  async manageImage(actor: Principal, id: string) {
     this.requireManager(actor);
-    return this.readImage(id, kind, true);
+    return this.readImage(id, true);
   }
 
   async create(actor: Principal, dto: CreateEventDto, files: EventImages = {}) {
@@ -383,14 +376,10 @@ export class EventsService {
         'Published events must start in the future',
       );
     }
-    if (files.thumbnail?.length !== 1 || files.banner?.length !== 1) {
-      throw new BadRequestException(
-        'One thumbnail and one banner are required',
-      );
+    if (files.banner?.length !== 1) {
+      throw new BadRequestException('One banner is required');
     }
-    const thumbnail = files.thumbnail[0];
     const banner = files.banner[0];
-    this.uploads.validate(thumbnail, true);
     this.uploads.validate(banner, true);
     const savedFiles: string[] = [];
     try {
@@ -402,8 +391,6 @@ export class EventsService {
         if (!category)
           throw new BadRequestException('Category must exist and be active');
         const eventId = generateId('event');
-        const thumb = await this.uploads.save(thumbnail, 'events');
-        savedFiles.push(thumb.filename);
         const cover = await this.uploads.save(banner, 'events');
         savedFiles.push(cover.filename);
         if (
@@ -417,7 +404,6 @@ export class EventsService {
         const event = manager.create(Event, {
           event_id: eventId,
           name: dto.name,
-          shortDescription: dto.shortDescription ?? null,
           description: dto.description ?? null,
           venueName: dto.venueName,
           address: dto.address,
@@ -428,13 +414,7 @@ export class EventsService {
           startTime,
           endTime,
           createdBy: actor.user_id,
-          thumbnailUrl:
-            '/api/events/' +
-            eventId +
-            '/images/thumbnail?file=' +
-            thumb.filename,
-          bannerUrl:
-            '/api/events/' + eventId + '/images/banner?file=' + cover.filename,
+          bannerUrl: this.imageUrl(eventId, cover.filename),
         });
         return EventResponseDto.from(await manager.save(event));
       });
@@ -446,13 +426,11 @@ export class EventsService {
     }
   }
 
-  async image(id: string, kind: string) {
-    return this.readImage(id, kind, false);
+  async image(id: string) {
+    return this.readImage(id, false);
   }
 
-  private async readImage(id: string, kind: string, managed: boolean) {
-    if (kind !== 'thumbnail' && kind !== 'banner')
-      throw new NotFoundException();
+  private async readImage(id: string, managed: boolean) {
     const event = await this.dataSource.getRepository(Event).findOne({
       where: {
         event_id: id,
@@ -460,10 +438,9 @@ export class EventsService {
           ? {}
           : { status: In([EventStatus.PUBLISHED, EventStatus.CANCELLED]) }),
       },
-      select: { event_id: true, thumbnailUrl: true, bannerUrl: true },
+      select: { event_id: true, bannerUrl: true },
     });
-    const storedUrl =
-      kind === 'thumbnail' ? event?.thumbnailUrl : event?.bannerUrl;
+    const storedUrl = event?.bannerUrl;
     if (!storedUrl) throw new NotFoundException('Image not found');
     // Only the database-owned filename is used; client query parameters are ignored.
     const filename = new URL(storedUrl, 'http://local').searchParams.get(

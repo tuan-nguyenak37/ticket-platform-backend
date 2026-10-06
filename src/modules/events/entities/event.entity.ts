@@ -33,23 +33,10 @@ export class Event {
   name!: string;
 
   @Column({
-    type: 'varchar',
-    length: 500,
-    nullable: true,
-  })
-  shortDescription!: string | null;
-
-  @Column({
     type: 'text',
     nullable: true,
   })
   description!: string | null;
-
-  @Column({
-    type: 'text',
-    nullable: true,
-  })
-  thumbnailUrl!: string | null;
 
   @Column({
     type: 'text',

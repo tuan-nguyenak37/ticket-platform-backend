@@ -22,7 +22,7 @@ async upload(
 }
 ```
 
-Đây là ví dụ tích hợp chung. POST /api/events đã tích hợp upload hai ảnh; xem
+Đây là ví dụ tích hợp chung. POST /api/events chỉ upload một ảnh banner; xem
 [API sự kiện](./events-api.md). Module nghiệp vụ
 phải lưu liên kết giữa filename và tài nguyên/chủ sở hữu, đồng thời xử lý dọn
 file khi thao tác liên kết thất bại hoặc file được thay thế.

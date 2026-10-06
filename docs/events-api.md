@@ -8,7 +8,7 @@ Cập nhật theo controller, DTO và service ngày **05/10/2026**. Tài liệu 
 - API quản lý gửi header `Authorization: Bearer <accessToken>`; ADMIN và MODERATOR quản lý mọi sự kiện.
 - API public dùng được khi chưa đăng nhập.
 - ID sự kiện và category là chuỗi. Lấy category qua [GET /api/event-categories](./event-categories-api.md), API public trả các category đang hoạt động. Ví dụ dùng `event_cat_music`; thay bằng `category_id` thực trong response.
-- Multipart: các trường nội dung là text, `thumbnail`/`banner` chọn loại File. Để Postman/trình duyệt tự tạo `Content-Type` có boundary.
+- Multipart: các trường nội dung là text, `banner` chọn loại File. Để Postman/trình duyệt tự tạo `Content-Type` có boundary.
 
 | Method | Đường dẫn | Quyền | Chức năng |
 | --- | --- | --- | --- |
@@ -21,8 +21,8 @@ Cập nhật theo controller, DTO và service ngày **05/10/2026**. Tài liệu 
 | `GET` | [`/api/events/manage/:id`](#detail-manage) | ADMIN, MODERATOR | Chi tiết quản lý |
 | `PATCH` | [`/api/events/:id`](#update) | ADMIN, MODERATOR | Cập nhật |
 | `DELETE` | [`/api/events/:id`](#delete) | ADMIN, MODERATOR | Xóa |
-| `GET` | [`/api/events/:id/images/:kind`](#image-public) | Public | Ảnh công khai |
-| `GET` | [`/api/events/manage/:id/images/:kind`](#image-manage) | ADMIN, MODERATOR | Ảnh quản lý |
+| `GET` | [`/api/events/:id/images/banner`](#image-public) | Public | Ảnh công khai |
+| `GET` | [`/api/events/manage/:id/images/banner`](#image-manage) | ADMIN, MODERATOR | Ảnh quản lý |
 
 <a id="response-json"></a>
 ## Cấu trúc response JSON
@@ -45,9 +45,7 @@ Các ví dụ dưới đây là **toàn bộ response**, gồm cả lớp bọc.
 | --- | --- | --- |
 | `event_id` | string | ID server sinh |
 | `name` | string | Tên sự kiện |
-| `shortDescription` | string hoặc null | Mô tả ngắn |
 | `description` | string hoặc null | Nội dung mô tả |
-| `thumbnailUrl` | string hoặc null | Đường dẫn API ảnh đại diện; tạo mới thành công có URL |
 | `bannerUrl` | string hoặc null | Đường dẫn API banner; tạo mới thành công có URL |
 | `startTime` | string | Thời gian bắt đầu, ISO 8601 UTC |
 | `endTime` | string | Thời gian kết thúc, ISO 8601 UTC |
@@ -74,7 +72,6 @@ Các ví dụ dưới đây là **toàn bộ response**, gồm cả lớp bọc.
 | Field | Kiểu | Bắt buộc | Quy tắc | Ví dụ |
 | --- | --- | --- | --- | --- |
 | `name` | string | Có | Trim, 1–255 ký tự | Concert mùa thu 2026 |
-| `shortDescription` | string | Không | Tối đa 500 ký tự; bỏ qua lưu null | Đêm nhạc trực tiếp |
 | `description` | string | Không | Tối đa 20.000 ký tự; bỏ qua lưu null; hiển thị dạng văn bản | Thông tin chi tiết về chương trình. |
 | `startTime` | string | Có | ISO 8601 có múi giờ | `2026-11-20T19:00:00+07:00` |
 | `endTime` | string | Có | ISO 8601 có múi giờ, lớn hơn startTime | `2026-11-20T23:00:00+07:00` |
@@ -82,10 +79,9 @@ Các ví dụ dưới đây là **toàn bộ response**, gồm cả lớp bọc.
 | `address` | string | Có | Trim, 1–500 ký tự | Hà Nội |
 | `categoryId` | string | Có | 1–40 ký tự; ID category tồn tại và đang hoạt động | `event_cat_music` |
 | `status` | string | Không | draft hoặc published; mặc định draft | `published` |
-| `thumbnail` | File | Có | Đúng 1 ảnh JPEG/PNG/GIF/WebP | `thumbnail.jpg` |
 | `banner` | File | Có | Đúng 1 ảnh JPEG/PNG/GIF/WebP | `banner.png` |
 
-Ảnh tối đa 10 MB/file theo mặc định; cấu hình bằng `UPLOAD_MAX_FILE_SIZE_MB`. Cả hai ảnh đều bắt buộc kể cả tạo draft. Nếu status là published, startTime phải ở tương lai. Request chỉ gửi các field trong bảng; ID, URL ảnh và createdBy do server xác định.
+Ảnh tối đa 10 MB/file theo mặc định; cấu hình bằng `UPLOAD_MAX_FILE_SIZE_MB`. Banner bắt buộc kể cả tạo draft. Nếu status là published, startTime phải ở tương lai. Request chỉ gửi các field trong bảng; ID, URL ảnh và createdBy do server xác định.
 
 ### Response 201
 
@@ -97,9 +93,7 @@ Các ví dụ dưới đây là **toàn bộ response**, gồm cả lớp bọc.
   "data": {
     "event_id": "event_k8m2n4p6q8r0s2t4",
     "name": "Concert mùa thu 2026",
-    "shortDescription": "Đêm nhạc trực tiếp",
     "description": "Thông tin chi tiết về chương trình.",
-    "thumbnailUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/thumbnail?file=9c7e3f81-a1b2-4c3d-8e5f-0a1b2c3d4e5f.jpg",
     "bannerUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/banner?file=4a2b1c8e-5f6a-4b3c-9d0e-1f2a3b4c5d6e.png",
     "startTime": "2026-11-20T12:00:00.000Z",
     "endTime": "2026-11-20T16:00:00.000Z",
@@ -151,9 +145,7 @@ Danh sách public chỉ chứa published và không nhận query status. Sắp t
       {
         "event_id": "event_k8m2n4p6q8r0s2t4",
         "name": "Concert mùa thu 2026",
-        "shortDescription": "Đêm nhạc trực tiếp",
         "description": "Thông tin chi tiết về chương trình.",
-        "thumbnailUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/thumbnail?file=9c7e3f81-a1b2-4c3d-8e5f-0a1b2c3d4e5f.jpg",
         "bannerUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/banner?file=4a2b1c8e-5f6a-4b3c-9d0e-1f2a3b4c5d6e.png",
         "startTime": "2026-11-20T12:00:00.000Z",
         "endTime": "2026-11-20T16:00:00.000Z",
@@ -204,9 +196,7 @@ Không có trường totalPages; FE tính `Math.ceil(total / limit)` nếu cần
   "data": {
     "event_id": "event_k8m2n4p6q8r0s2t4",
     "name": "Concert mùa thu 2026",
-    "shortDescription": "Đêm nhạc trực tiếp",
     "description": "Thông tin chi tiết về chương trình.",
-    "thumbnailUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/thumbnail?file=9c7e3f81-a1b2-4c3d-8e5f-0a1b2c3d4e5f.jpg",
     "bannerUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/banner?file=4a2b1c8e-5f6a-4b3c-9d0e-1f2a3b4c5d6e.png",
     "startTime": "2026-11-20T12:00:00.000Z",
     "endTime": "2026-11-20T16:00:00.000Z",
@@ -263,9 +253,7 @@ Phạm vi gồm mọi người tạo. Sắp xếp và ý nghĩa phân trang gi�
       {
         "event_id": "event_k8m2n4p6q8r0s2t4",
         "name": "Concert mùa thu 2026",
-        "shortDescription": "Đêm nhạc trực tiếp",
         "description": "Thông tin chi tiết về chương trình.",
-        "thumbnailUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/thumbnail?file=9c7e3f81-a1b2-4c3d-8e5f-0a1b2c3d4e5f.jpg",
         "bannerUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/banner?file=4a2b1c8e-5f6a-4b3c-9d0e-1f2a3b4c5d6e.png",
         "startTime": "2026-11-20T12:00:00.000Z",
         "endTime": "2026-11-20T16:00:00.000Z",
@@ -310,9 +298,7 @@ Mỗi item có createdBy; danh sách có thể gồm draft, published và cancel
   "data": {
     "event_id": "event_k8m2n4p6q8r0s2t4",
     "name": "Concert mùa thu 2026",
-    "shortDescription": "Đêm nhạc trực tiếp",
     "description": "Thông tin chi tiết về chương trình.",
-    "thumbnailUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/thumbnail?file=9c7e3f81-a1b2-4c3d-8e5f-0a1b2c3d4e5f.jpg",
     "bannerUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/banner?file=4a2b1c8e-5f6a-4b3c-9d0e-1f2a3b4c5d6e.png",
     "startTime": "2026-11-20T12:00:00.000Z",
     "endTime": "2026-11-20T16:00:00.000Z",
@@ -331,7 +317,7 @@ Mỗi item có createdBy; danh sách có thể gồm draft, published và cancel
 }
 ```
 
-URL thumbnailUrl/bannerUrl vẫn là URL ảnh public. Với draft, sử dụng [API ảnh quản lý](#image-manage) kèm Bearer token để preview.
+URL bannerUrl vẫn là URL ảnh public. Với draft, sử dụng [API ảnh quản lý](#image-manage) kèm Bearer token để preview.
 
 <a id="update"></a>
 ## 6. PATCH /api/events/:id — Cập nhật sự kiện
@@ -347,7 +333,6 @@ URL thumbnailUrl/bannerUrl vẫn là URL ảnh public. Với draft, sử dụng 
 | Field | Kiểu | Bắt buộc | Quy tắc cập nhật |
 | --- | --- | --- | --- |
 | `name` | string | Không | Trim, 1–255 ký tự |
-| `shortDescription` | string hoặc null | Không | Tối đa 500 ký tự; null trong JSON hoặc chuỗi rỗng để xóa nội dung |
 | `description` | string hoặc null | Không | Tối đa 20.000 ký tự; null trong JSON hoặc chuỗi rỗng để xóa nội dung |
 | `startTime` | string | Không | ISO 8601 có múi giờ |
 | `endTime` | string | Không | ISO 8601 có múi giờ; lớn hơn startTime sau khi kết hợp dữ liệu cũ và mới |
@@ -355,25 +340,24 @@ URL thumbnailUrl/bannerUrl vẫn là URL ảnh public. Với draft, sử dụng 
 | `address` | string | Không | Trim, 1–500 ký tự |
 | `categoryId` | string | Không | 1–40 ký tự, category mới phải tồn tại/active |
 | `status` | string | Không | draft/published/cancelled theo vòng đời bên dưới; bỏ qua giữ nguyên |
-| `thumbnail` | File | Không | Chỉ multipart, tối đa một ảnh JPEG/PNG/GIF/WebP |
 | `banner` | File | Không | Chỉ multipart, tối đa một ảnh JPEG/PNG/GIF/WebP |
 
-Gửi ít nhất một field hoặc ảnh. Field bỏ qua giữ nguyên, bao gồm status và ảnh còn lại. Các field bắt buộc của POST không nhận null. Hai field mô tả không tự trim; chuỗi rỗng và null được lưu đúng giá trị gửi. Ảnh giữ giới hạn dung lượng như POST.
+Gửi ít nhất một field hoặc ảnh. Field bỏ qua giữ nguyên, bao gồm status và banner. Các field bắt buộc của POST không nhận null. Field description không tự trim; chuỗi rỗng và null được lưu đúng giá trị gửi. Ảnh giữ giới hạn dung lượng như POST.
 
 Ví dụ sửa nội dung bằng JSON:
 
 ```json
 {
   "name": "Concert mùa thu 2026 — cập nhật",
-  "shortDescription": null
+  "description": null
 }
 ```
 
-Ví dụ thay một ảnh bằng form-data:
+Ví dụ thay banner bằng form-data:
 
 | Key | Loại trong Postman | Giá trị |
 | --- | --- | --- |
-| `thumbnail` | File | Chọn thumbnail mới |
+| `banner` | File | Chọn banner mới |
 
 Vòng đời cho phép draft → published → cancelled; gửi cùng trạng thái giữ trạng thái đó. Khi công bố draft, category phải active và startTime phải ở tương lai. Published đã bắt đầu chỉ được hủy trước endTime bằng body chỉ có status; cancelled không sửa tiếp.
 
@@ -403,9 +387,7 @@ Ví dụ hủy:
   "data": {
     "event_id": "event_k8m2n4p6q8r0s2t4",
     "name": "Concert mùa thu 2026 — cập nhật",
-    "shortDescription": null,
-    "description": "Thông tin chi tiết về chương trình.",
-    "thumbnailUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/thumbnail?file=9c7e3f81-a1b2-4c3d-8e5f-0a1b2c3d4e5f.jpg",
+    "description": null,
     "bannerUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/banner?file=4a2b1c8e-5f6a-4b3c-9d0e-1f2a3b4c5d6e.png",
     "startTime": "2026-11-20T12:00:00.000Z",
     "endTime": "2026-11-20T16:00:00.000Z",
@@ -424,7 +406,7 @@ Ví dụ hủy:
 }
 ```
 
-Response trả đầy đủ dữ liệu sau cập nhật, kể cả các field không sửa. Thay ảnh cập nhật URL tương ứng; createdBy vẫn là người tạo ban đầu. Công bố/hủy có cùng cấu trúc response, với status mới.
+Response trả đầy đủ dữ liệu sau cập nhật, kể cả các field không sửa. Thay banner cập nhật bannerUrl; createdBy vẫn là người tạo ban đầu. Công bố/hủy có cùng cấu trúc response, với status mới.
 
 <a id="delete"></a>
 ## 7. DELETE /api/events/:id — Xóa sự kiện
@@ -435,7 +417,7 @@ Response trả đầy đủ dữ liệu sau cập nhật, kể cả các field k
 | --- | --- | --- | --- |
 | `id` | string | Có | Giá trị `event_id` của sự kiện, ví dụ `event_k8m2n4p6q8r0s2t4` |
 
-Cho phép xóa ở mọi trạng thái, kể cả published/cancelled, với điều kiện không có khóa ngoại nghiệp vụ khác ngăn xóa. Xóa thành công khỏi database rồi dọn hai ảnh local.
+Cho phép xóa ở mọi trạng thái, kể cả published/cancelled, với điều kiện không có khóa ngoại nghiệp vụ khác ngăn xóa. Xóa thành công khỏi database rồi dọn banner local.
 
 ### Response 200
 
@@ -455,21 +437,20 @@ Cho phép xóa ở mọi trạng thái, kể cả published/cancelled, với đi
 Data gồm `event_id` (string, ID đã xóa) và `message` (string, `Event deleted`).
 
 <a id="image-public"></a>
-## 8. GET /api/events/:id/images/:kind — Ảnh công khai
+## 8. GET /api/events/:id/images/banner — Ảnh công khai
 
 **Quyền:** Public. Phục vụ ảnh của published/cancelled. Không có body.
 
 | Path param | Kiểu | Bắt buộc | Ý nghĩa |
 | --- | --- | --- | --- |
 | `id` | string | Có | Giá trị `event_id` của sự kiện, ví dụ `event_k8m2n4p6q8r0s2t4` |
-| `kind` | string | Có | `thumbnail` hoặc `banner` |
 
 Không cần query. URL trong response có thể kèm `?file=<uuid>.jpg`; server lấy tên file từ bản ghi database, không dùng query do client gửi để chọn file.
 
 Ví dụ:
 
 ```http
-GET /api/events/event_k8m2n4p6q8r0s2t4/images/thumbnail
+GET /api/events/event_k8m2n4p6q8r0s2t4/images/banner
 ```
 
 ### Response ảnh
@@ -496,14 +477,13 @@ Cache-Control: no-store
 Response ảnh không có các trường JSON `success`, `data`, `timestamp`.
 
 <a id="image-manage"></a>
-## 9. GET /api/events/manage/:id/images/:kind — Ảnh quản lý
+## 9. GET /api/events/manage/:id/images/banner — Ảnh quản lý
 
 **Quyền:** ADMIN, MODERATOR; gửi Bearer token. Đọc được ảnh mọi trạng thái, kể cả draft. Không có body hoặc query nghiệp vụ.
 
 | Path param | Kiểu | Bắt buộc | Ý nghĩa |
 | --- | --- | --- | --- |
 | `id` | string | Có | Giá trị `event_id` của sự kiện, ví dụ `event_k8m2n4p6q8r0s2t4` |
-| `kind` | string | Có | `thumbnail` hoặc `banner` |
 
 Ví dụ:
 
@@ -535,7 +515,7 @@ Cache-Control: no-store
 
 Response ảnh không có các trường JSON `success`, `data`, `timestamp`.
 
-FE có thể fetch ảnh quản lý với Authorization rồi dùng Blob URL để preview. Đường dẫn quản lý không tự thay thế thumbnailUrl/bannerUrl trong JSON.
+FE có thể fetch ảnh quản lý với Authorization rồi dùng Blob URL để preview. Đường dẫn quản lý không tự thay thế bannerUrl trong JSON.
 
 
 <a id="pinned"></a>
@@ -559,9 +539,7 @@ rồi event_id tăng dần. Không tự bù sự kiện chưa ghim khi thiếu 4
     {
       "event_id": "event_k8m2n4p6q8r0s2t4",
       "name": "Concert mùa thu 2026",
-      "shortDescription": "Đêm nhạc trực tiếp",
       "description": "Thông tin chi tiết về chương trình.",
-      "thumbnailUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/thumbnail?file=9c7e3f81-a1b2-4c3d-8e5f-0a1b2c3d4e5f.jpg",
       "bannerUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/banner?file=4a2b1c8e-5f6a-4b3c-9d0e-1f2a3b4c5d6e.png",
       "startTime": "2026-11-20T12:00:00.000Z",
       "endTime": "2026-11-20T16:00:00.000Z",
@@ -601,13 +579,17 @@ pinnedAt do server đặt. API POST/PATCH nội dung sự kiện không nhận h
 Ví dụ ghim:
 
 ```json
-{ "isPinned": true }
+{
+  "isPinned": true
+}
 ```
 
 Ví dụ bỏ ghim:
 
 ```json
-{ "isPinned": false }
+{
+  "isPinned": false
+}
 ```
 
 Tối đa 4 suất ghim còn hiệu lực. Ghim chỉ áp dụng cho published chưa kết thúc,
@@ -625,9 +607,7 @@ Muốn đưa lên đầu thì bỏ ghim rồi ghim lại.
   "data": {
     "event_id": "event_k8m2n4p6q8r0s2t4",
     "name": "Concert mùa thu 2026",
-    "shortDescription": "Đêm nhạc trực tiếp",
     "description": "Thông tin chi tiết về chương trình.",
-    "thumbnailUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/thumbnail?file=9c7e3f81-a1b2-4c3d-8e5f-0a1b2c3d4e5f.jpg",
     "bannerUrl": "/api/events/event_k8m2n4p6q8r0s2t4/images/banner?file=4a2b1c8e-5f6a-4b3c-9d0e-1f2a3b4c5d6e.png",
     "startTime": "2026-11-20T12:00:00.000Z",
     "endTime": "2026-11-20T16:00:00.000Z",
@@ -661,6 +641,17 @@ khóa hàng sự kiện rồi mới kiểm tra/đếm/cập nhật. Audit action
 
 Khi DB_SYNCHRONIZE tắt, áp dụng [SQL bổ sung](./event-pinning.sql) trước khi chạy
 phiên bản backend mới. Dữ liệu cũ mặc định chưa ghim; không cần seed.
+
+## Chuyển sang chỉ dùng banner
+
+Events chỉ nhận và trả description (mô tả chi tiết) và bannerUrl. Client gửi một
+file banner khi tạo; khi sửa có thể bỏ qua file để giữ banner hiện tại.
+Các trường thumbnail, thumbnailUrl và shortDescription đã được loại bỏ;
+đường dẫn ảnh chỉ còn /images/banner (public và manage).
+
+Khi DB_SYNCHRONIZE tắt, áp dụng [SQL bỏ hai cột cũ](./event-banner-only.sql)
+sau khi dừng bản backend cũ. SQL không xóa file; các ảnh thumbnail đã lưu trước
+đây không còn được phục vụ qua API nhưng chưa được dọn khỏi ổ đĩa.
 
 ## Tài liệu liên quan
 

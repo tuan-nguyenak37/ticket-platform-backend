@@ -45,14 +45,20 @@ khởi động phiên bản backend có chức năng ghim. Lượt này không c
    Token hết hạn thì chạy lại Login hoặc dùng refresh bằng cookie.
 
 Các request đã có form-data, Bearer và script lưu token/ID vào environment.
-Ảnh mẫu đã gán đường dẫn tuyệt đối ở `.tmp/postman-files/thumbnail.png` và
-`.tmp/postman-files/banner.png`. Nếu Postman yêu cầu chọn lại file, chọn hai file
-này trong Body. Đây là file local, không được upload lên kho file Postman.
+Ảnh banner mẫu đã gán đường dẫn tuyệt đối ở `.tmp/postman-files/banner.png`.
+Nếu Postman yêu cầu chọn lại file, chọn file này trong Body. Đây là file local, không được upload lên kho file Postman.
 
 Ba tài khoản test riêng theo role cùng một category test đã được tạo trong database
 local. Environment đã điền thông tin test; mật khẩu/token đánh dấu secret. Không
 đưa environment có credential vào Git. Fixture và báo cáo chi tiết nằm trong .tmp
-(đã ignore). Mỗi lần chạy thành công tạo thêm 3 event test và 6 ảnh.
+(đã ignore). Mỗi lần chạy collection Events thành công tạo thêm 3 event test và 3 banner.
+
+## Chỉ dùng banner
+
+Request tạo chỉ gửi một file banner; thay ảnh dùng field banner. Đọc ảnh dùng
+/images/banner, với URL manage cho draft. Các request hiện tại không gửi mô tả
+ngắn hoặc ảnh đại diện. Tham khảo [SQL chuyển đổi](../event-banner-only.sql)
+khi database tắt synchronize. Các số liệu bên dưới là lịch sử trước thay đổi này.
 
 ## Kết quả xác minh 01/10/2026
 

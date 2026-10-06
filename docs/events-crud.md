@@ -8,15 +8,15 @@ public. Các thao tác ghi có audit events.create/update/delete.
 
 | API | Tham số | Response thành công |
 | --- | --- | --- |
-| [`POST /api/events`](./events-api.md#create) | Bearer; multipart: name, venueName, address, categoryId, startTime, endTime, thumbnail, banner bắt buộc; shortDescription, description, status tùy chọn | 201; data là đầy đủ sự kiện quản lý, có createdBy |
+| [`POST /api/events`](./events-api.md#create) | Bearer; multipart: name, venueName, address, categoryId, startTime, endTime, banner bắt buộc; description, status tùy chọn | 201; data là đầy đủ sự kiện quản lý, có createdBy |
 | [`GET /api/events`](./events-api.md#list-public) | Query tùy chọn: page, limit, q, categoryId, phase; không body | 200; data = { items, total, page, limit }; items public không có createdBy |
 | [`GET /api/events/:id`](./events-api.md#detail-public) | Path: id; không body hoặc query nghiệp vụ | 200; data là sự kiện public, gồm phase, không có createdBy |
 | [`GET /api/events/manage`](./events-api.md#list-manage) | Bearer; query tùy chọn: page, limit, q, categoryId, phase, status | 200; data = { items, total, page, limit }; items có createdBy |
 | [`GET /api/events/manage/:id`](./events-api.md#detail-manage) | Bearer; path: id; không body | 200; data là đầy đủ sự kiện quản lý, kể cả draft |
 | [`PATCH /api/events/:id`](./events-api.md#update) | Bearer; path: id; JSON hoặc multipart, gửi ít nhất một field/ảnh cần sửa | 200; data là đầy đủ sự kiện sau cập nhật, có createdBy và phase |
 | [`DELETE /api/events/:id`](./events-api.md#delete) | Bearer; path: id; không body | 200; data = { event_id, message: "Event deleted" } |
-| [`GET /api/events/:id/images/:kind`](./events-api.md#image-public) | Path: id, kind=thumbnail hoặc banner; không body; query file không cần gửi | 200; body nhị phân ảnh, Content-Type tương ứng; không JSON envelope |
-| [`GET /api/events/manage/:id/images/:kind`](./events-api.md#image-manage) | Bearer; path: id, kind=thumbnail hoặc banner; không body | 200; body nhị phân ảnh, kể cả draft; không JSON envelope |
+| [`GET /api/events/:id/images/banner`](./events-api.md#image-public) | Path: id, không body; query file không cần gửi | 200; body nhị phân ảnh, Content-Type tương ứng; không JSON envelope |
+| [`GET /api/events/manage/:id/images/banner`](./events-api.md#image-manage) | Bearer; path: id, không body | 200; body nhị phân ảnh, kể cả draft; không JSON envelope |
 
 ## Quy tắc đọc và cập nhật
 
@@ -25,8 +25,8 @@ API manage đọc được draft. Public không trả createdBy; POST/PATCH/mana
 Phase là upcoming/ongoing/ended được tính từ startTime/endTime. Các response JSON
 dùng lớp bọc chuẩn; response ảnh là byte ảnh với Content-Type tương ứng.
 
-PATCH giữ nguyên field/ảnh bị bỏ qua. Có thể thay riêng thumbnail hoặc banner.
-Hai mô tả xóa bằng null trong JSON hoặc chuỗi rỗng. Thời gian được kiểm tra sau khi
+PATCH giữ nguyên field/ảnh bị bỏ qua. Có thể thay banner bằng multipart.
+Mô tả chi tiết xóa bằng null trong JSON hoặc chuỗi rỗng. Thời gian được kiểm tra sau khi
 kết hợp dữ liệu đang lưu. Khi đổi category hoặc công bố draft, category phải active.
 
 Vòng đời: draft → published → cancelled. Công bố yêu cầu startTime còn ở tương lai.

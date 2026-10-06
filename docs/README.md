@@ -10,6 +10,7 @@ Tài liệu cập nhật theo mã nguồn Auth/Users ngày 30/09/2026.
 | [API người dùng](./users-api.md) | Hồ sơ cá nhân, đổi mật khẩu và API quản trị |
 | [API sự kiện](./events-api.md) | Đủ 11 endpoint: đường dẫn, tham số, kiểu dữ liệu và ví dụ response thành công chi tiết |
 | [API thể loại sự kiện](./event-categories-api.md) | Danh sách category đang hoạt động, public cho trang chủ, tìm kiếm và form sự kiện |
+| [SQL chỉ dùng banner](./event-banner-only.sql) | Bỏ cột ảnh đại diện và mô tả ngắn cũ khi synchronize tắt |
 | [SQL ghim sự kiện](./event-pinning.sql) | Thêm isPinned, pinnedAt và index khi synchronize tắt |
 | [Upload local](./uploads.md) | Cấu hình upload dùng chung |
 | [CRUD sự kiện](./events-crud.md) | Tra cứu đầu vào/đầu ra, vòng đời và phạm vi quyền |

@@ -238,48 +238,43 @@
           "mode": "formdata",
           "formdata": [
             {
+              "type": "text",
               "value": "{{crudName}}",
-              "key": "name",
-              "type": "text"
+              "key": "name"
             },
             {
+              "type": "text",
               "value": "Local test venue",
-              "key": "venueName",
-              "type": "text"
+              "key": "venueName"
             },
             {
+              "type": "text",
               "value": "Ha Noi",
-              "key": "address",
-              "type": "text"
+              "key": "address"
             },
             {
+              "type": "text",
               "value": "{{categoryId}}",
-              "key": "categoryId",
-              "type": "text"
+              "key": "categoryId"
             },
             {
+              "type": "text",
               "value": "draft",
-              "key": "status",
-              "type": "text"
+              "key": "status"
             },
             {
+              "type": "text",
               "value": "{{startTime}}",
-              "key": "startTime",
-              "type": "text"
+              "key": "startTime"
             },
             {
+              "type": "text",
               "value": "{{endTime}}",
-              "key": "endTime",
-              "type": "text"
+              "key": "endTime"
             },
             {
-              "key": "thumbnail",
               "type": "file",
-              "src": "D:/HK1-2026_2027/Do_an_nganh/project/backend/.tmp/postman-files/thumbnail.png"
-            },
-            {
               "key": "banner",
-              "type": "file",
               "src": "D:/HK1-2026_2027/Do_an_nganh/project/backend/.tmp/postman-files/banner.png"
             }
           ]
@@ -298,21 +293,21 @@
       "event": [
         {
           "script": {
+            "type": "text/javascript",
             "exec": [
               "pm.variables.set(\"startTime\",new Date(Date.now()+86400000).toISOString());",
               "pm.variables.set(\"endTime\",new Date(Date.now()+90000000).toISOString());"
-            ],
-            "type": "text/javascript"
+            ]
           },
           "listen": "prerequest"
         },
         {
           "script": {
+            "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
               "if(pm.response.code===201) pm.environment.set(\"crudId\",pm.response.json().data.event_id);"
-            ],
-            "type": "text/javascript"
+            ]
           },
           "listen": "test"
         }
@@ -455,7 +450,7 @@
       ]
     },
     {
-      "name": "09 - View draft thumbnail (MODERATOR)",
+      "name": "09 - View draft banner (MODERATOR)",
       "request": {
         "auth": {
           "type": "bearer",
@@ -470,7 +465,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{baseUrl}}/api/events/manage/{{crudId}}/images/thumbnail",
+          "raw": "{{baseUrl}}/api/events/manage/{{crudId}}/images/banner",
           "host": [
             "{{baseUrl}}"
           ],
@@ -480,19 +475,19 @@
             "manage",
             "{{crudId}}",
             "images",
-            "thumbnail"
+            "banner"
           ]
         }
       },
       "event": [
         {
+          "listen": "test",
           "script": {
+            "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
-            ],
-            "type": "text/javascript"
-          },
-          "listen": "test"
+            ]
+          }
         }
       ]
     },
@@ -880,7 +875,7 @@
       ]
     },
     {
-      "name": "18 - Replace thumbnail",
+      "name": "18 - Replace banner",
       "request": {
         "auth": {
           "type": "bearer",
@@ -899,8 +894,8 @@
           "formdata": [
             {
               "type": "file",
-              "key": "thumbnail",
-              "src": "D:/HK1-2026_2027/Do_an_nganh/project/backend/.tmp/postman-files/thumbnail.png"
+              "key": "banner",
+              "src": "D:/HK1-2026_2027/Do_an_nganh/project/backend/.tmp/postman-files/banner.png"
             }
           ]
         },
@@ -918,13 +913,13 @@
       },
       "event": [
         {
+          "listen": "test",
           "script": {
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
             ],
             "type": "text/javascript"
-          },
-          "listen": "test"
+          }
         }
       ]
     },
@@ -986,44 +981,39 @@
           "mode": "formdata",
           "formdata": [
             {
-              "value": "{{crudName}}",
               "key": "name",
-              "type": "text"
+              "type": "text",
+              "value": "{{crudName}}"
             },
             {
-              "value": "Local test venue",
               "key": "venueName",
-              "type": "text"
+              "type": "text",
+              "value": "Local test venue"
             },
             {
-              "value": "Ha Noi",
               "key": "address",
-              "type": "text"
+              "type": "text",
+              "value": "Ha Noi"
             },
             {
-              "value": "{{categoryId}}",
               "key": "categoryId",
-              "type": "text"
+              "type": "text",
+              "value": "{{categoryId}}"
             },
             {
-              "value": "draft",
               "key": "status",
-              "type": "text"
+              "type": "text",
+              "value": "draft"
             },
             {
-              "value": "{{startTime}}",
               "key": "startTime",
-              "type": "text"
+              "type": "text",
+              "value": "{{startTime}}"
             },
             {
-              "value": "{{endTime}}",
               "key": "endTime",
-              "type": "text"
-            },
-            {
-              "key": "thumbnail",
-              "type": "file",
-              "src": "D:/HK1-2026_2027/Do_an_nganh/project/backend/.tmp/postman-files/thumbnail.png"
+              "type": "text",
+              "value": "{{endTime}}"
             },
             {
               "key": "banner",

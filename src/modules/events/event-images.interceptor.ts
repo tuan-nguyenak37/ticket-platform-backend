@@ -16,13 +16,10 @@ export class EventImagesInterceptor implements NestInterceptor {
   constructor(config: ConfigService) {
     const options = createUploadOptions(config);
     const Interceptor = FileFieldsInterceptor(
-      [
-        { name: 'thumbnail', maxCount: 1 },
-        { name: 'banner', maxCount: 1 },
-      ],
+      [{ name: 'banner', maxCount: 1 }],
       {
         ...options,
-        limits: { ...options.limits, files: 2, parts: 22 },
+        limits: { ...options.limits, files: 1, parts: 21 },
         fileFilter: (request, file, callback) => {
           if (!file.mimetype.startsWith('image/')) {
             return callback(

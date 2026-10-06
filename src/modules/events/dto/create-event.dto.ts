@@ -21,11 +21,6 @@ export class CreateEventDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(500)
-  shortDescription?: string;
-
-  @IsOptional()
-  @IsString()
   @MaxLength(20000)
   description?: string;
 

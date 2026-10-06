@@ -1,5 +1,19 @@
 # Trạng thái kiểm chứng và bàn giao
 
+## Events chỉ dùng banner — 05/10/2026
+
+Đã bỏ thumbnail/thumbnailUrl và shortDescription khỏi entity, DTO, API tạo/sửa
+và response. Tạo sự kiện yêu cầu một banner; cập nhật có thể giữ hoặc thay banner.
+API ảnh công khai và quản trị chỉ phục vụ banner. Docs và hai collection Postman
+Events/Events CRUD đã đồng bộ; đã đọc lại workspace, không còn trường cũ.
+
+- Build (`npm run build`): đạt.
+- TypeScript (`tsc --noEmit --incremental false`): đạt, xác nhận ngày 06/10/2026.
+- Không chạy test, Newman, SQL hoặc seed trong lượt này.
+- [SQL bỏ hai cột cũ](./event-banner-only.sql) dành cho môi trường tắt
+  DB_SYNCHRONIZE; chưa áp dụng vào database và không xóa file thumbnail cũ.
+- Chưa kiểm tra runtime upload, thay/xóa banner, rollback hoặc API ảnh sau thay đổi.
+
 ## Cập nhật CRUD Events — 01/10/2026
 
 Build và TypeScript đạt. Newman local đạt 37 request/48 assertions; đã kiểm tra
