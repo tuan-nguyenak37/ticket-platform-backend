@@ -5,10 +5,12 @@ import { TicketsService } from './tickets.service';
 import { TicketsController } from './tickets.controller';
 import { UploadsModule } from '../../common/uploads/uploads.module';
 
+import { TicketFileInterceptor } from './ticket-file.interceptor';
+
 @Module({
   imports: [TypeOrmModule.forFeature([Ticket]), UploadsModule],
   controllers: [TicketsController],
-  providers: [TicketsService],
+  providers: [TicketsService, TicketFileInterceptor],
   exports: [TypeOrmModule, TicketsService],
 })
 export class TicketsModule {}

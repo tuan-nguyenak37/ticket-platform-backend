@@ -58,13 +58,19 @@ export class AuditInterceptor implements NestInterceptor {
             'event_id' in value &&
             typeof value.event_id === 'string'
               ? value.event_id
-              : action === 'users.create' &&
+              : action === 'tickets.create' &&
                   value &&
                   typeof value === 'object' &&
-                  'user_id' in value &&
-                  typeof value.user_id === 'string'
-                ? value.user_id
-                : base.targetId;
+                  'ticket_id' in value &&
+                  typeof value.ticket_id === 'string'
+                ? value.ticket_id
+                : action === 'users.create' &&
+                    value &&
+                    typeof value === 'object' &&
+                    'user_id' in value &&
+                    typeof value.user_id === 'string'
+                  ? value.user_id
+                  : base.targetId;
           this.audit.record({ ...base, targetId, result: 'allowed' });
         },
         error: (error: unknown) =>

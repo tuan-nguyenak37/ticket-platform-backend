@@ -69,7 +69,7 @@ export class UploadsService {
 
   async save(
     file: Express.Multer.File | undefined,
-    scope?: 'events',
+    scope?: 'events' | 'tickets',
   ): Promise<StoredUpload> {
     const mimetype = this.validate(file, scope === 'events');
     const directory = resolve(
@@ -144,6 +144,54 @@ export class UploadsService {
         )
       ) {
         throw new NotFoundException('Image not found');
+      }
+      throw error;
+    }
+  }
+
+  private ticketPath(filename: string): string {
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|gif|webp|pdf)$/.test(
+        filename,
+      )
+    ) {
+      throw new NotFoundException('Ticket file not found');
+    }
+    return join(
+      resolve(this.config.get<string>('UPLOAD_DIR', 'uploads'), 'tickets'),
+      filename,
+    );
+  }
+
+  async removeTicketFile(filename: string): Promise<void> {
+    try {
+      await unlink(this.ticketPath(filename));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        this.logger.error(
+          JSON.stringify({
+            action: 'uploads.cleanup',
+            filename,
+            result: 'failed',
+          }),
+        );
+      }
+    }
+  }
+
+  async readTicketFile(filename: string) {
+    try {
+      const buffer = await readFile(this.ticketPath(filename));
+      const mimetype = detectMime(buffer);
+      if (!mimetype) throw new NotFoundException('Ticket file not found');
+      return { buffer, mimetype };
+    } catch (error) {
+      if (
+        ['ENOENT', 'ENOTDIR'].includes(
+          (error as NodeJS.ErrnoException).code ?? '',
+        )
+      ) {
+        throw new NotFoundException('Ticket file not found');
       }
       throw error;
     }
