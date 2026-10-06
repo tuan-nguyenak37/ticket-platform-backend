@@ -1,4 +1,36 @@
-# Danh sách vé công khai
+# API Tickets
+
+## DELETE /api/tickets/:id — Hủy đăng bán
+
+Yêu cầu đăng nhập, header `Authorization: Bearer <accessToken>`. Không cần body
+hoặc query. Path `id` là `ticket_id` trả về khi tạo vé.
+
+Chỉ chủ vé được gọi, kể cả ADMIN/MODERATOR cũng chỉ hủy vé của chính mình.
+Cho phép hủy khi pending_review, rejected hoặc available. Holding, sold, expired
+và cancelled không được chuyển trạng thái bằng API này; gọi lặp sau khi hủy
+không được coi là một lần hủy thành công mới.
+
+API đổi status sang cancelled, giữ bản ghi, thông tin kiểm duyệt và file vé.
+Không xóa vật lý. Vé đã hủy không còn xuất hiện trong danh sách công khai.
+Quyền sở hữu và trạng thái được kiểm tra trong cùng câu UPDATE để bảo vệ thao
+tác hủy khi có cập nhật đồng thời. Các luồng giữ/mua vé sau này cũng phải dùng
+cập nhật có điều kiện trạng thái, tránh ghi đè vé đã hủy bằng dữ liệu cũ.
+Audit action: `tickets.cancel`.
+
+### Response 200
+
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Request successful",
+  "data": {
+    "ticket_id": "ticket_example",
+    "status": "cancelled"
+  },
+  "timestamp": "2026-10-06T10:00:00.000Z"
+}
+```
 
 ## GET /api/tickets
 

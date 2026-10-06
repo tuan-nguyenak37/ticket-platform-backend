@@ -1,9 +1,10 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 import { UploadsService } from '../../common/uploads/uploads.service';
 import { generateId } from '../../common/utils/generateId';
 import type { Principal } from '../auth/authorization/principal';
@@ -25,6 +26,33 @@ export class TicketsService {
     private readonly dataSource: DataSource,
     private readonly uploads: UploadsService,
   ) {}
+
+  async cancel(actor: Principal, id: string) {
+    const repository = this.dataSource.getRepository(Ticket);
+    // Ownership and state are checked by the same UPDATE that cancels the ticket.
+    const result = await repository.update(
+      {
+        ticket_id: id,
+        sellerId: actor.user_id,
+        status: In([
+          TicketStatus.PENDING_REVIEW,
+          TicketStatus.REJECTED,
+          TicketStatus.AVAILABLE,
+        ]),
+      },
+      { status: TicketStatus.CANCELLED },
+    );
+    if (result.affected === 1) {
+      return { ticket_id: id, status: TicketStatus.CANCELLED };
+    }
+
+    const ownedTicket = await repository.findOne({
+      where: { ticket_id: id, sellerId: actor.user_id },
+      select: { ticket_id: true },
+    });
+    if (!ownedTicket) throw new NotFoundException('Ticket not found');
+    throw new ConflictException('Ticket cannot be cancelled in its current state');
+  }
 
   async list(query: ListTicketsDto) {
     if (

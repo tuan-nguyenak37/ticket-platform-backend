@@ -343,3 +343,11 @@ Chỉ trả vé available thuộc sự kiện published chưa kết thúc. Respo
 sự kiện (tên, banner, thời gian, địa điểm, categoryId), không trả file vé hay buyerId.
 
 [Tham số và response chi tiết](./tickets-api.md).
+
+### Hủy vé — DELETE /api/tickets/:id
+
+Đăng nhập bằng Bearer token; chỉ chủ vé, không có ngoại lệ cho ADMIN/MODERATOR.
+Path id là ticket_id; không cần body/query. Chỉ pending_review/rejected/available
+được chuyển sang cancelled. Giữ bản ghi và file vé. Response 200:
+`data: { ticket_id, status: "cancelled" }`. Có audit tickets.cancel;
+quyền sở hữu và trạng thái được kiểm tra nguyên tử trong UPDATE.

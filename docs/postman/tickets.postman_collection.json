@@ -441,6 +441,35 @@
           }
         }
       ]
+    },
+    {
+      "name": "Cancel my ticket (DELETE /api/tickets/:id)",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{userToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/tickets/{{ticketId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "tickets",
+            "{{ticketId}}"
+          ]
+        },
+        "description": "Hủy vé của chính mình: pending_review/rejected/available → cancelled. Giữ bản ghi và file vé. Chạy sau Create Ticket; không dùng vé holding/sold."
+      }
     }
   ]
 }

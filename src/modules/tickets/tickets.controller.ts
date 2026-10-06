@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  Param,
   Post,
   Query,
   UploadedFiles,
@@ -28,6 +30,13 @@ export class TicketsController {
   @Public()
   list(@Query() query: ListTicketsDto) {
     return this.ticketsService.list(query);
+  }
+
+  @Delete(':id')
+  @Authenticated()
+  @Audit('tickets.cancel')
+  cancel(@CurrentUser() actor: Principal, @Param('id') id: string) {
+    return this.ticketsService.cancel(actor, id);
   }
 
   @Post()
