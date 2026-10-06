@@ -1,13 +1,16 @@
 import {
   Body,
   Controller,
+  Get,
   Post,
+  Query,
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
 import {
   Authenticated,
   CurrentUser,
+  Public,
 } from '../auth/authorization/access-policy';
 import { Audit } from '../auth/authorization/audit.interceptor';
 import type { Principal } from '../auth/authorization/principal';
@@ -15,10 +18,17 @@ import { CreateTicketDto } from './dto/create-ticket.dto';
 import { TicketFileInterceptor } from './ticket-file.interceptor';
 import { TicketsService } from './tickets.service';
 import type { TicketUploadFiles } from './tickets.service';
+import { ListTicketsDto } from './dto/list-tickets.dto';
 
 @Controller('tickets')
 export class TicketsController {
   constructor(private readonly ticketsService: TicketsService) {}
+
+  @Get()
+  @Public()
+  list(@Query() query: ListTicketsDto) {
+    return this.ticketsService.list(query);
+  }
 
   @Post()
   @Authenticated()

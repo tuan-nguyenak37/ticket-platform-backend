@@ -330,3 +330,16 @@ Frontend dùng `name` làm nhãn và `category_id` làm giá trị của dropdow
 Gửi giá trị đã chọn vào `categoryId` khi tìm kiếm hoặc tạo/sửa sự kiện.
 
 [Hợp đồng API và response JSON đầy đủ](./event-categories-api.md).
+
+## 5. Danh sách vé (`GET /api/tickets`)
+
+Public, không cần token/body. Query: `page` (1), `limit` (20, tối đa 100),
+`categoryId`, `eventId`, `ticketTier`, `minPrice`, `maxPrice`, `q`, `sort`.
+Các bộ lọc kết hợp; hạng vé khớp toàn bộ không phân biệt hoa thường, q tìm
+chuỗi con trong tên sự kiện hoặc hạng vé. sort gồm newest/price_asc/price_desc/event_soonest.
+
+Chỉ trả vé available thuộc sự kiện published chưa kết thúc. Response 200:
+`data: { items, total, page, limit }`; mỗi item có dữ liệu vé công khai và tóm tắt
+sự kiện (tên, banner, thời gian, địa điểm, categoryId), không trả file vé hay buyerId.
+
+[Tham số và response chi tiết](./tickets-api.md).

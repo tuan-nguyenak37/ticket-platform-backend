@@ -1,6 +1,22 @@
 import { Ticket } from '../entities/ticket.entity';
 
 export class TicketResponseDto {
+  static listItem(ticket: Ticket) {
+    return {
+      ...this.public(ticket),
+      event: {
+        event_id: ticket.event.event_id,
+        name: ticket.event.name,
+        bannerUrl: ticket.event.bannerUrl,
+        startTime: ticket.event.startTime,
+        endTime: ticket.event.endTime,
+        venueName: ticket.event.venueName,
+        address: ticket.event.address,
+        categoryId: ticket.event.categoryId,
+      },
+    };
+  }
+
   static from(ticket: Ticket) {
     return {
       ticket_id: ticket.ticket_id,

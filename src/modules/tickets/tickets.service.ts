@@ -13,6 +13,7 @@ import { CreateTicketDto } from './dto/create-ticket.dto';
 import { TicketResponseDto } from './dto/ticket-response.dto';
 import { Ticket } from './entities/ticket.entity';
 import { TicketStatus } from './entities/enums/ticket-status.enum';
+import { ListTicketsDto, TicketSort } from './dto/list-tickets.dto';
 
 export interface TicketUploadFiles {
   ticketFile?: Express.Multer.File[];
@@ -24,6 +25,90 @@ export class TicketsService {
     private readonly dataSource: DataSource,
     private readonly uploads: UploadsService,
   ) {}
+
+  async list(query: ListTicketsDto) {
+    if (
+      query.minPrice !== undefined &&
+      query.maxPrice !== undefined &&
+      query.minPrice > query.maxPrice
+    ) {
+      throw new BadRequestException('minPrice must not exceed maxPrice');
+    }
+
+    const builder = this.dataSource
+      .getRepository(Ticket)
+      .createQueryBuilder('ticket')
+      .innerJoin('ticket.event', 'event')
+      .select([
+        'ticket.ticket_id',
+        'ticket.eventId',
+        'ticket.ticketTier',
+        'ticket.seatInfo',
+        'ticket.originalPrice',
+        'ticket.price',
+        'ticket.status',
+        'ticket.description',
+        'ticket.createdAt',
+        'event.event_id',
+        'event.name',
+        'event.bannerUrl',
+        'event.startTime',
+        'event.endTime',
+        'event.venueName',
+        'event.address',
+        'event.categoryId',
+      ])
+      .where('ticket.status = :ticketStatus', {
+        ticketStatus: TicketStatus.AVAILABLE,
+      })
+      .andWhere('event.status = :eventStatus', {
+        eventStatus: EventStatus.PUBLISHED,
+      })
+      .andWhere('event.endTime > :now', { now: new Date() });
+
+    if (query.eventId)
+      builder.andWhere('ticket.eventId = :eventId', { eventId: query.eventId });
+    if (query.categoryId)
+      builder.andWhere('event.categoryId = :categoryId', {
+        categoryId: query.categoryId,
+      });
+    if (query.ticketTier)
+      builder.andWhere('lower(ticket.ticketTier) = lower(:ticketTier)', {
+        ticketTier: query.ticketTier,
+      });
+    if (query.minPrice !== undefined)
+      builder.andWhere('ticket.price >= :minPrice', { minPrice: query.minPrice });
+    if (query.maxPrice !== undefined)
+      builder.andWhere('ticket.price <= :maxPrice', { maxPrice: query.maxPrice });
+    if (query.q) {
+      // Literal substring search: user-supplied % and _ are not SQL wildcards.
+      builder.andWhere(
+        '(strpos(lower(event.name), lower(:q)) > 0 OR strpos(lower(ticket.ticketTier), lower(:q)) > 0)',
+        { q: query.q },
+      );
+    }
+
+    const sortColumns: Record<TicketSort, [string, 'ASC' | 'DESC']> = {
+      [TicketSort.NEWEST]: ['ticket.createdAt', 'DESC'],
+      [TicketSort.PRICE_ASC]: ['ticket.price', 'ASC'],
+      [TicketSort.PRICE_DESC]: ['ticket.price', 'DESC'],
+      [TicketSort.EVENT_SOONEST]: ['event.startTime', 'ASC'],
+    };
+    const [column, direction] = sortColumns[query.sort];
+    const [tickets, total] = await builder
+      .orderBy(column, direction)
+      .addOrderBy('ticket.ticket_id', 'ASC')
+      .skip((query.page - 1) * query.limit)
+      .take(query.limit)
+      .getManyAndCount();
+
+    return {
+      items: tickets.map((ticket) => TicketResponseDto.listItem(ticket)),
+      total,
+      page: query.page,
+      limit: query.limit,
+    };
+  }
 
   private filename(url: string | null): string | undefined {
     if (!url) return undefined;

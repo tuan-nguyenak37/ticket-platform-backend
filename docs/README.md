@@ -8,6 +8,7 @@ Tài liệu cập nhật theo mã nguồn Auth/Users ngày 30/09/2026.
 | [API xác thực](./auth-api.md) | Đăng ký, đăng nhập, refresh, logout và định dạng response |
 | [JWT và phiên đăng nhập](./auth-session-updates.md) | Cookie, thu hồi token, cấu hình và yêu cầu database |
 | [API người dùng](./users-api.md) | Hồ sơ cá nhân, đổi mật khẩu và API quản trị |
+| [Danh sách vé](./tickets-api.md) | API public, lọc danh mục/giá/hạng vé, tìm kiếm và phân trang |
 | [API sự kiện](./events-api.md) | Đủ 11 endpoint: đường dẫn, tham số, kiểu dữ liệu và ví dụ response thành công chi tiết |
 | [API thể loại sự kiện](./event-categories-api.md) | Danh sách category đang hoạt động, public cho trang chủ, tìm kiếm và form sự kiện |
 | [SQL chỉ dùng banner](./event-banner-only.sql) | Bỏ cột ảnh đại diện và mô tả ngắn cũ khi synchronize tắt |
@@ -36,4 +37,4 @@ Tài liệu cập nhật theo mã nguồn Auth/Users ngày 30/09/2026.
 - `DELETE /api/users/:id` đã bỏ.
 - Đổi mật khẩu qua `PATCH /api/users/me/password`, sau đó đăng nhập lại.
 - MODERATOR chưa có quyền quản lý người khác.
-- Tài liệu nghiệp vụ vé/đơn hàng là thiết kế tương lai, không phải danh sách endpoint đã triển khai.
+- Module vé đã có tạo vé và danh sách công khai; các nghiệp vụ duyệt vé/đơn hàng trong tài liệu thiết kế chưa phải endpoint đã triển khai.
