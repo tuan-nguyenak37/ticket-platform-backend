@@ -1,8 +1,11 @@
 # Tài liệu API Backend (Chi tiết Request & Response JSON)
 
+Cập nhật đối chiếu mã nguồn ngày 07/10/2026. Các ví dụ user ở login, refresh và
+danh sách quản trị được rút gọn; trường đầy đủ xem [API Users](./users-api.md).
+
 Quy chuẩn chung:
 - **Base URL**: `http://localhost:7000/api`
-- Tất cả API trả về cấu trúc bọc chuẩn:
+- API trả JSON thành công dùng cấu trúc bọc chuẩn (API ảnh/file trả dữ liệu nhị phân):
   ```json
   {
     "success": true,
@@ -50,7 +53,7 @@ Quy chuẩn chung:
     "updatedAt": "2026-10-01T08:00:00.000Z"
   }
   ```
-* **Yêu cầu khác**: Email unique (trùng trả 409). Password >= 6 ký tự, mã hóa bcrypt. Không trả password.
+* **Yêu cầu khác**: Email trim/chuyển chữ thường, unique (trùng trả 409). Password dài 6–32 ký tự, băm bcrypt. fullName tùy chọn, tối đa 100 ký tự. Role luôn USER; không nhận trường ngoài DTO. Không trả password.
 
 ---
 
@@ -109,11 +112,10 @@ Quy chuẩn chung:
 * **Response `data` (200 OK)**:
   ```json
   {
-    "success": true,
-    "message": "Logged out successfully"
+    "message": "Đăng xuất thành công"
   }
   ```
-* **Yêu cầu khác**: Tăng `tokenVersion` +1 trong DB để vô hiệu hóa tất cả refresh token cũ. Xóa cookie.
+* **Yêu cầu khác**: Tăng `tokenVersion` +1 trong DB, thu hồi cả access và refresh token của phiên cũ. Xóa cookie `refresh_token` tại `/api/auth`.
 
 ---
 
@@ -155,13 +157,11 @@ Quy chuẩn chung:
 * **Request Body (JSON)**:
   ```json
   {
-    "fullName": "Nguyễn Văn B",
-    "phone": "0987654321",
-    "avatarUrl": "https://example.com/new-avatar.jpg"
+    "fullName": "Nguyễn Văn B"
   }
   ```
 * **Response `data` (200 OK)**: Đối tượng User sau khi cập nhật.
-* **Yêu cầu khác**: Không được đổi `email`, `role`, `status`. Ghi audit log `profile.update`.
+* **Yêu cầu khác**: Chỉ nhận fullName, trim và dài 1–100 ký tự. Không nhận phone, avatarUrl, email, password, role hoặc status. Ghi audit log `profile.update`; giữ phiên hiện tại.
 
 ---
 
@@ -179,7 +179,7 @@ Quy chuẩn chung:
 * **Response `data` (200 OK)**:
   ```json
   {
-    "message": "Password updated successfully"
+    "message": "Đổi mật khẩu thành công, hãy đăng nhập lại"
   }
   ```
 * **Yêu cầu khác**: Tự tăng `tokenVersion` và xóa cookie để bắt buộc đăng nhập lại.
@@ -187,7 +187,7 @@ Quy chuẩn chung:
 ---
 
 ### 2.4. `GET /api/users`
-* **Chức năng**: Quản trị xem danh sách toàn bộ người dùng.
+* **Chức năng**: Quản trị xem tối đa 100 người dùng có status khác deleted, sắp createdAt giảm dần rồi user_id tăng dần; chưa có phân trang.
 * **Role**: `ADMIN`.
 * **Request**: Header `Authorization: Bearer <accessToken>`.
 * **Response `data` (200 OK)**:
@@ -224,13 +224,11 @@ Quy chuẩn chung:
   {
     "email": "mod@example.com",
     "password": "Password123",
-    "fullName": "Ban Quản Trị",
-    "phone": "0912345678",
-    "role": "moderator",
-    "status": "active"
+    "fullName": "Người dùng mới"
   }
   ```
 * **Response `data` (201 Created)**: Đối tượng User mới tạo.
+* **Yêu cầu khác**: Cùng DTO đăng ký; role luôn USER. Không nhận phone, role hoặc status; không tạo ADMIN/MODERATOR qua API này.
 
 ---
 
@@ -331,7 +329,14 @@ Gửi giá trị đã chọn vào `categoryId` khi tìm kiếm hoặc tạo/sử
 
 [Hợp đồng API và response JSON đầy đủ](./event-categories-api.md).
 
-## 5. Danh sách vé (`GET /api/tickets`)
+## 5. Module Tickets (`/api/tickets`)
+
+### Đăng bán vé
+
+`POST /api/tickets`: mọi tài khoản active đã đăng nhập; multipart gồm eventId,
+ticketTier, originalPrice, price và đúng một file ticketFile; seatInfo/description
+tùy chọn. Response 201 trả vé pending_review; job kiểm tra được tạo cùng transaction.
+Xem [đầu vào và response đầy đủ](./tickets-api.md#dang-ban-ve).
 
 ### Vé của tôi
 
@@ -368,3 +373,17 @@ Path id là ticket_id; không cần body/query. Chỉ pending_review/rejected/av
 được chuyển sang cancelled. Giữ bản ghi và file vé. Response 200:
 `data: { ticket_id, status: "cancelled" }`. Có audit tickets.cancel;
 quyền sở hữu và trạng thái được kiểm tra nguyên tử trong UPDATE.
+
+## 6. Module Orders (`/api/orders`)
+
+Xem [hợp đồng Orders](./orders-api.md) cho request/response, phân quyền, trạng thái,
+schema và cấu hình. Tạo đơn bằng POST /api/orders với body ticketId và header
+Idempotency-Key. Không giữ vé; một vé chỉ cấp cho một đơn thanh toán thành công.
+
+GET /api/orders/me và /me/:id trả đơn của người mua/người bán. Buyer dùng các route
+/me/:id/cancel, /payment, /payment/mock-result, /file, /dispute; seller dùng
+/me/:id/dispute/reply. ADMIN/MODERATOR dùng /manage và /manage/:id, quyết định qua
+/manage/:id/dispute/resolve, xác nhận giả lập qua /refund/mock hoặc /payout/mock.
+Không ai được quản trị quyết định/chuyển tiền cho đơn mình tham gia.
+
+Amount Orders là chuỗi thập phân, currency=VND. Chưa có thanh toán VNPay/tiền thật.

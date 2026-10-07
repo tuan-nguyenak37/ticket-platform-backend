@@ -1,9 +1,9 @@
-# Postman local Events
+# Postman local Backend
 
 Workspace: nesjs. Environment: Backend Local - Events.
 baseUrl: http://localhost:7000 (không thêm /api).
 
-## Collection hiện tại — 05/10/2026
+## Collection trong repository — 07/10/2026
 
 Các collection chỉ giữ request hợp lệ; đã bỏ request cố tình gửi sai dữ liệu hoặc
 gọi API bằng quyền không phù hợp. Script tự lưu token/ID và các kiểm tra response
@@ -12,8 +12,43 @@ thành công vẫn được giữ.
 | Collection | Số request | Nội dung |
 | --- | --- | --- |
 | Backend - Auth | 4 | Login, refresh bằng cookie, lấy user hiện tại, logout |
-| Backend - Events | 12 | Category public, login theo role, tạo sự kiện, đọc ảnh và ghim/bỏ ghim |
+| Backend - Events | 13 | Category public, login theo role, tạo sự kiện, đọc ảnh và ghim/bỏ ghim |
 | Backend - Events CRUD | 27 | Category public, CRUD, ghim/bỏ ghim, refresh và lấy user |
+| Backend - Tickets | 20 | Đăng, tìm kiếm, hủy, kiểm duyệt và xem vé tôi đăng |
+| Backend - Orders | 14 | Tạo đơn, thanh toán giả lập, nhận file, tranh chấp và đối soát |
+
+Số request trên được đếm từ file JSON local; chưa xác nhận đồng bộ lên workspace
+Postman trong lượt này. Các hướng dẫn/cấu hình workspace bên dưới là lịch sử bàn giao.
+
+### Collection Tickets
+
+Import [tickets.postman_collection.json](./tickets.postman_collection.json), dùng
+baseUrl không có /api. Đăng nhập USER, chọn eventId của sự kiện published chưa
+kết thúc và chọn file ticketFile trong request tạo vé. Vé mới pending_review
+nên chưa xuất hiện ở danh sách public; dùng nhóm My tickets với userToken để xem.
+
+Để duyệt, đăng nhập ADMIN bằng tài khoản khác người bán, dùng reviewToken và
+reviewTicketId. Nếu chạy Recheck, đợi worker hoàn tất rồi đọc lại Ticket report
+để lấy checkVersion/selectedCodeId hiện tại trước Approve. Chọn Approve hoặc
+Reject cho một vé pending; không chạy cả hai quyết định liên tiếp trên cùng vé.
+Request Cancel cũng là nhánh riêng; vé đã cancelled không thể được duyệt.
+Collection này không phải một kịch bản chạy toàn bộ tuần tự luôn thành công.
+
+### Collection Orders
+
+Import [orders.postman_collection.json](./orders.postman_collection.json).
+Cấu hình baseUrl, buyerToken, sellerToken, managerToken và ticketId. Các token
+lấy từ Auth; manager phải là ADMIN/MODERATOR khác hai bên giao dịch. Collection
+không chứa tài khoản, token thật hoặc file vé.
+
+Chạy Create → Start mock payment → Mock successful payment → Download purchased
+ticket. Script tạo key mới cho request Create và lưu orderId; retry cùng yêu cầu
+phải giữ lại orderKey thay vì xóa biến. Với một giao dịch mới, xóa orderKey trước.
+Để thử tranh chấp, mở dispute bằng buyer, phản hồi bằng seller, giải quyết bằng
+manager rồi mới chạy mock refund nếu quyết định accept. Payout chỉ chạy khi đơn
+completed. Cancel, refund và payout là các nhánh thay thế, không chạy cả collection
+tuần tự. Kịch bản hai người mua dùng hai bộ token/orderId; tạo và start cả hai trước
+khi gửi success. Xem [hợp đồng Orders](../orders-api.md) để biết cấu hình mock/schema.
 
 **Backend - Auth** thay cho tên cũ Backend - Login regression. Login dùng
 userEmail/userPassword trong environment, tự lưu sessionAccessToken cho các bước sau.
@@ -22,7 +57,7 @@ userEmail/userPassword trong environment, tự lưu sessionAccessToken cho các 
 event riêng qua biến crudId, sửa rồi xóa; không xóa event của lượt tạo trước đó.
 Không chạy đồng thời các collection vì login mới thu hồi token của phiên trước.
 
-Lượt cập nhật này đã đọc lại cấu hình qua MCP để kiểm tra URL, auth, script,
+Lượt cập nhật ngày 05/10/2026 đã đọc lại cấu hình qua MCP để kiểm tra URL, auth, script,
 body và đường dẫn ảnh; không chạy request nghiệp vụ hoặc Newman.
 
 Luồng ghim dùng ba request Pin published event → List pinned events (public) →

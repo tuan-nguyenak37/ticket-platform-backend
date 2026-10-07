@@ -39,7 +39,10 @@ file khi thao tác liên kết thất bại hoặc file được thay thế.
   tên hay đường dẫn do client gửi.
 - Trả `{ filename, mimetype, size }`; không trả đường dẫn tuyệt đối.
 - Thiếu/rỗng/sai loại file trả 400; vượt dung lượng trả 413.
-- Không cấu hình static public cho thư mục uploads. API tải file và quyền đọc
-  sẽ được triển khai theo tài nguyên, đặc biệt đối với PDF vé.
+- Không cấu hình static public cho thư mục uploads. Banner được đọc qua API
+  Events public/manage theo trạng thái và quyền. File vé được đọc qua
+  `GET /api/tickets/manage/:id/file`, chỉ ADMIN/MODERATOR. Người mua đã được cấp
+  vé dùng `GET /api/orders/me/:id/file`, kiểm tra quyền/trạng thái Order.
+  Xem [kiểm tra vé](./ticket-review-automation.md) và [Orders](./orders-api.md).
 
-Không khởi động server hoặc kết nối database để xác minh cấu hình này.
+Lượt đối chiếu tài liệu ngày 07/10/2026 không khởi động server hoặc kết nối database.

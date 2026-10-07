@@ -2,6 +2,62 @@
 
 API quản trị và worker OCR/QR được mô tả tại [Kiểm tra/duyệt vé](./ticket-review-automation.md).
 
+Đối chiếu controller, DTO và service ngày 07/10/2026; chưa xác minh runtime trong lượt tài liệu này.
+
+<a id="dang-ban-ve"></a>
+## POST /api/tickets — Đăng bán vé
+
+Mọi tài khoản active (USER/MODERATOR/ADMIN) gửi Bearer access token. Body dùng
+multipart/form-data; để Postman/trình duyệt tự đặt Content-Type kèm boundary.
+
+| Field | Bắt buộc | Quy tắc |
+| --- | --- | --- |
+| eventId | Có | Chuỗi trim, 1–40 ký tự; sự kiện published chưa kết thúc |
+| ticketTier | Có | Chuỗi trim, 1–100 ký tự |
+| originalPrice | Có | Số từ 0–1.000.000.000, tối đa 2 chữ số thập phân |
+| price | Có | Số từ 1–1.000.000.000, tối đa 2 chữ số thập phân |
+| seatInfo | Không | Chuỗi trim, tối đa 100 ký tự |
+| description | Không | Chuỗi trim, tối đa 2000 ký tự |
+| ticketFile | Có | Đúng một file PDF/JPEG/PNG/GIF/WebP, mặc định tối đa 10 MB |
+
+Các trường số có thể gửi dạng text thập phân trong multipart, không dùng dấu
+phân cách hàng nghìn. Hiện không có ràng buộc price phải nhỏ hơn originalPrice.
+sellerId lấy từ người đăng nhập; client không gửi sellerId, buyerId hoặc status.
+
+Server lưu vé pending_review và TicketCheck queued (version=1) trong cùng
+transaction; OCR chạy sau, request không chờ kết quả. Nếu lưu database thất bại,
+server thực hiện dọn file đã lưu. Audit action: tickets.create.
+
+### Response 201
+
+Ví dụ nội dung data trong envelope chuẩn:
+
+```json
+{
+  "ticket_id": "ticket_example",
+  "eventId": "event_example",
+  "sellerId": "user_example",
+  "ticketTier": "VIP",
+  "seatInfo": "A15",
+  "originalPrice": 1000000,
+  "price": 800000,
+  "status": "pending_review",
+  "description": "Pass vé do thay đổi lịch cá nhân.",
+  "createdAt": "2026-10-07T08:00:00.000Z",
+  "updatedAt": "2026-10-07T08:00:00.000Z",
+  "reviewMethod": null
+}
+```
+
+Không trả file/QR/hash, event lồng hoặc check trong response tạo. seatInfo và
+description là null nếu bỏ qua. Các trường kiểm duyệt/người mua chưa có giá trị
+được bỏ khỏi JSON của DTO tạo, khác với DTO /me dùng null.
+
+- 400: body/file không hợp lệ, sự kiện chưa published hoặc đã kết thúc.
+- 401: thiếu token, token/phiên không hợp lệ hoặc tài khoản không active.
+- 404: sự kiện không tồn tại.
+- 413: file vượt giới hạn upload.
+
 ## GET /api/tickets/me — Vé tôi đăng bán
 
 Mọi tài khoản đang hoạt động (USER/MODERATOR/ADMIN), gửi Bearer access token.

@@ -2,12 +2,16 @@
 
 ## Phạm vi đã triển khai
 
-Backend hiện có Auth, Users và Events. Ba role giữ nguyên: USER, MODERATOR, ADMIN.
+Đối chiếu mã nguồn ngày 07/10/2026: backend có Auth, Users, Events (gồm category)
+và Tickets (gồm kiểm tra/duyệt vé), Orders (thanh toán giả lập và tranh chấp).
+Ba role: USER, MODERATOR, ADMIN.
 
 - USER và MODERATOR được quản lý hồ sơ của chính mình.
 - `GET /api/event-categories` là public: khách và mọi role đều xem được danh sách category đang hoạt động; không cấp quyền tạo/sửa/xóa category.
 - ADMIN có thêm quyền tạo, xem danh sách, xem chi tiết và sửa tên user.
-- MODERATOR và ADMIN được tạo, xem quản lý, sửa và xóa mọi sự kiện, kể cả do người khác tạo và sự kiện published. MODERATOR không được quản lý user/category hoặc kiểm duyệt tin bán.
+- MODERATOR và ADMIN được tạo, xem quản lý, sửa và xóa mọi sự kiện, kể cả do người khác tạo và sự kiện published. MODERATOR không được quản lý user/category.
+- Mọi tài khoản active được đăng vé, xem vé mình đăng và hủy vé mình ở trạng thái pending_review/rejected/available. ADMIN/MODERATOR không vượt quyền sở hữu ở các API này.
+- ADMIN/MODERATOR được xem hàng chờ, báo cáo, file vé, yêu cầu kiểm tra và quyết định duyệt/từ chối; không tự duyệt hoặc từ chối vé mình đăng.
 - ADMIN/MODERATOR được ghim/bỏ ghim qua PATCH /api/events/:id/pin; GET /api/events/pinned là public và chỉ trả tối đa 4 sự kiện ghim còn hiệu lực.
 - Không có API đổi role, khóa/mở khóa hoặc xóa tài khoản.
 - Chính sách nằm trong code; chưa có bảng permission hoặc giao diện quản trị quyền.
@@ -110,28 +114,40 @@ Các action đang có:
 | events.update | ADMIN/MODERATOR sửa nội dung/ảnh hoặc chuyển trạng thái sự kiện |
 | events.pin.update | ADMIN/MODERATOR ghim hoặc bỏ ghim; không đổi quyền sửa nội dung sự kiện |
 | events.delete | ADMIN/MODERATOR xóa sự kiện ở mọi trạng thái |
+| tickets.create | Tạo vé của người gọi |
+| tickets.cancel | Hủy đăng bán vé của người gọi |
+| tickets.file.read | ADMIN/MODERATOR đọc file vé |
+| tickets.check.request | ADMIN/MODERATOR yêu cầu kiểm tra vé |
+| tickets.review.manual | ADMIN/MODERATOR quyết định duyệt hoặc từ chối |
 
-result gồm allowed, denied, failed. AuditService chỉ ghi danh sách trường nêu trên; không ghi body, header, password, hash, JWT hoặc cookie. Middleware tự sinh request ID và trả X-Request-Id; không tin request ID tùy ý từ client.
+result của AuditService gồm allowed, denied, failed. Worker còn ghi tickets.check
+và tickets.review.automatic bằng logger riêng; không có request HTTP tương ứng.
+AuditService chỉ ghi danh sách trường nêu trên; không ghi body, header, password,
+hash, JWT hoặc cookie. Middleware tự sinh request ID và trả X-Request-Id;
+không tin request ID tùy ý từ client.
 
 Nhật ký là log ứng dụng, chưa có bảng audit hoặc cơ chế lưu trữ/tổng hợp log riêng. Không phải mọi request thành công đều tạo audit event. Lỗi guard được ghi tại guard; thao tác có @Audit được ghi qua interceptor.
 
-## Ma trận nghiệp vụ tương lai — chưa triển khai endpoint
+## Ma trận nghiệp vụ hiện tại và phần dự kiến
 
 Ngữ cảnh sản phẩm: sàn mua bán lại vé, người dùng có thể vừa mua vừa bán.
 
 | Chức năng | Khách | USER/MODERATOR | ADMIN |
 | --- | --- | --- | --- |
 | Xem tin công khai | Được | Được | Được |
-| Tạo tin bán | Không | Chính mình là người bán | Như người dùng |
-| Xem bản nháp, sửa/gỡ tin | Không | Chỉ tin của mình và đúng trạng thái | Không sửa thay chủ tin |
-| Ẩn tin vi phạm | Không | Không | Thao tác kiểm duyệt riêng, có lý do |
-| Tạo đơn mua | Không | Chính mình là người mua; không mua tin của mình | Không mua thay người khác |
-| Xem đơn hàng | Không | Chỉ đơn mình là người mua/bán | Được xem phục vụ hỗ trợ |
-| Thực hiện giao dịch | Không | Đúng bên tham gia và đúng trạng thái | Không giả danh bên mua/bán |
-| Tạo/xem khiếu nại | Không | Thuộc giao dịch mình tham gia | Xử lý bằng chức năng riêng |
-| Tải file vé, mã QR | Không | Theo điều kiện bàn giao được chốt sau | Không mặc định được tải |
+| Đăng vé, xem vé mình đăng, hủy đăng bán (đã có) | Không | Chỉ vé của mình; hủy đúng trạng thái | Như người dùng |
+| Duyệt/từ chối vé pending (đã có) | Không | USER: không; MODERATOR: được, trừ vé của mình | Được, trừ vé của mình |
+| Sửa vé hoặc ẩn vé đã công khai (chưa có) | Không | Chưa cấp quyền qua API | Chưa có endpoint |
+| Tạo đơn mua (đã có) | Không | Chính mình là người mua; không mua vé của mình | Như người dùng |
+| Xem đơn hàng (đã có) | Không | Chỉ đơn mình tham gia; MODERATOR có API manage | API manage phục vụ hỗ trợ |
+| Thanh toán (giả lập) | Không | Chỉ buyer của đơn, mock bật ở development/test | Không trả thay buyer qua /me |
+| Tranh chấp (đã có) | Không | Buyer mở, seller phản hồi; MODERATOR xử lý đơn không thuộc mình | Xử lý đơn không thuộc mình |
+| Nhận file vé sau mua (đã có) | Không | Chỉ buyer của đơn đã được cấp vé và đúng trạng thái | Không vượt quyền buyer ở /me |
 
-Các quy tắc này là hợp đồng thiết kế, không phải chức năng đã được backend thực thi:
+Hợp đồng Orders nằm tại [Orders và thanh toán](./orders-api.md). ADMIN/MODERATOR
+được đọc quản lý, xử lý tranh chấp và giả lập hoàn tiền/chi trả nhưng không được
+quyết định hoặc chuyển tiền cho đơn mình tham gia. Chưa có VNPay hoặc tiền thật.
+Quyền đọc file phục vụ kiểm duyệt độc lập với quyền nhận file sau mua. Quy tắc chung:
 
 - DTO tin công khai không chứa QR, file gốc, liên hệ riêng hoặc thông tin đơn hàng.
 - Lọc danh sách đơn/khiếu nại theo người gọi ngay tại database.

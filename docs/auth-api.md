@@ -124,4 +124,8 @@ curl -b cookies.txt -c cookies.txt -X POST http://localhost:7000/api/auth/logout
   -H "Authorization: Bearer <accessToken mới nhất>"
 ```
 
-Postman có thể lưu và gửi cookie tự động. Sau refresh cần cập nhật Bearer access token. Với trình duyệt gọi khác origin, cần cấu hình CORS/credentials tương ứng; không suy ra backend đã bật CORS từ ví dụ này.
+Postman có thể lưu và gửi cookie tự động. Sau refresh cần cập nhật Bearer access
+token. Backend đã bật CORS với credentials trong configure-app.ts; origin lấy từ
+FRONTEND_URL (phân cách bằng dấu phẩy), mặc định localhost:5173 và localhost:3000.
+Frontend cần gửi credentials khi login/refresh/logout để dùng cookie; các thuộc
+tính SameSite/Secure vẫn áp dụng như mô tả trong tài liệu phiên đăng nhập.

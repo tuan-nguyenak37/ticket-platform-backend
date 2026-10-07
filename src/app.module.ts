@@ -11,6 +11,7 @@ import { GlobalResponseInterceptor } from './common/utils/interceptors/global-re
 import { EventsModule } from './modules/events/events.module';
 import { UploadsModule } from './common/uploads/uploads.module';
 import { TicketsModule } from './modules/tickets/tickets.module';
+import { OrdersModule } from './modules/orders/orders.module';
 @Module({
   imports: [
     AppConfigModule,
@@ -20,6 +21,7 @@ import { TicketsModule } from './modules/tickets/tickets.module';
     EventsModule,
     UploadsModule,
     TicketsModule,
+    OrdersModule,
   ],
   controllers: [AppController],
   providers: [

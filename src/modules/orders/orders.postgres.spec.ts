@@ -1,0 +1,583 @@
+import 'reflect-metadata';
+import { readFileSync } from 'fs';
+import { randomUUID } from 'crypto';
+import { parse } from 'dotenv';
+import { ConfigService } from '@nestjs/config';
+import { DataSource } from 'typeorm';
+import {
+  Order,
+  OrderDispute,
+  OrderPayment,
+  OrderStatus,
+  PaymentStatus,
+} from './order.entity';
+import { OrderStore } from './order-store.service';
+import { OrdersService } from './orders.service';
+import { OrderPaymentsService } from './order-payments.service';
+import { User } from '../users/entities/user.entity';
+import { UserRole } from '../users/entities/enums/user-role.enum';
+import { UserStatus } from '../users/entities/enums/user-status.enum';
+import { Event } from '../events/entities/event.entity';
+import { EventCategory } from '../events/entities/event-category.entity';
+import { EventStatus } from '../events/entities/enums/event-status.enum';
+import { Ticket } from '../tickets/entities/ticket.entity';
+import { TicketStatus } from '../tickets/entities/enums/ticket-status.enum';
+import type { Principal } from '../auth/authorization/principal';
+import { UploadsService } from '../../common/uploads/uploads.service';
+import { Test } from '@nestjs/testing';
+import { APP_GUARD, Reflector } from '@nestjs/core';
+import { INestApplication, UnauthorizedException } from '@nestjs/common';
+import request from 'supertest';
+import type { App } from 'supertest/types';
+import { OrdersController } from './orders.controller';
+import { AccessTokenGuard } from '../auth/jwt/access-token.guard';
+import { RolesGuard } from '../auth/authorization/roles.guard';
+import { AuditService } from '../auth/authorization/audit.service';
+import { TokenService } from '../auth/jwt/token.service';
+import { UsersService } from '../users/users.service';
+import { configureApp } from '../../configure-app';
+
+// Explicit opt-in. Only a newly-created random schema is written or dropped.
+const suite = process.env.ORDERS_PG_TEST === '1' ? describe : describe.skip;
+suite('Orders with real PostgreSQL transactions', () => {
+  jest.setTimeout(60000);
+  let db: DataSource;
+  let adminDb: DataSource;
+  let app: INestApplication<App>;
+  let schemaCreated = false;
+  const schema = `orders_test_${randomUUID().replaceAll('-', '')}`;
+  let orders: OrdersService;
+  let payments: OrderPaymentsService;
+  let store: OrderStore;
+  const buyer: Principal = {
+    user_id: 'buyer',
+    role: UserRole.USER,
+    status: UserStatus.ACTIVE,
+    tokenVersion: 0,
+  };
+  const other: Principal = { ...buyer, user_id: 'other' };
+  const seller: Principal = { ...buyer, user_id: 'seller' };
+  const admin: Principal = { ...buyer, user_id: 'admin', role: UserRole.ADMIN };
+  const upload = {
+    readTicketFile: jest.fn().mockResolvedValue({
+      buffer: Buffer.from('ticket'),
+      mimetype: 'application/pdf',
+    }),
+  };
+  let event: Event;
+  let ticket: Ticket;
+
+  beforeAll(async () => {
+    const env = parse(readFileSync('.env'));
+    const host = process.env.ORDERS_TEST_DB_HOST ?? env.DB_HOST;
+    if (
+      !['localhost', '127.0.0.1', '::1'].includes(host) ||
+      env.NODE_ENV === 'production'
+    )
+      throw new Error(
+        'Integration tests require a local non-production database',
+      );
+    const connection = {
+      type: 'postgres' as const,
+      host,
+      port: Number(process.env.ORDERS_TEST_DB_PORT ?? env.DB_PORT ?? 5432),
+      username: process.env.ORDERS_TEST_DB_USERNAME ?? env.DB_USERNAME,
+      password: process.env.ORDERS_TEST_DB_PASSWORD ?? env.DB_PASSWORD,
+      database: process.env.ORDERS_TEST_DB_NAME ?? env.DB_NAME,
+    };
+    adminDb = await new DataSource(connection).initialize();
+    await adminDb.query(`CREATE SCHEMA "${schema}"`);
+    schemaCreated = true;
+    const baseDb = await new DataSource({
+      ...connection,
+      schema,
+      entities: [User, EventCategory, Event, Ticket],
+      synchronize: true,
+    }).initialize();
+    await baseDb.destroy();
+    db = await new DataSource({
+      ...connection,
+      schema,
+      entities: [
+        User,
+        EventCategory,
+        Event,
+        Ticket,
+        Order,
+        OrderPayment,
+        OrderDispute,
+      ],
+      synchronize: false,
+    }).initialize();
+    const runner = db.createQueryRunner();
+    try {
+      await runner.connect();
+      await runner.query(`SET search_path TO "${schema}", pg_catalog`);
+      const sql = readFileSync('docs/orders-schema.sql', 'utf8');
+      await runner.query(sql);
+      await runner.query(sql);
+    } finally {
+      await runner.release();
+    }
+    store = new OrderStore(db);
+    const config = new ConfigService({
+      NODE_ENV: 'test',
+      PAYMENT_MOCK_ENABLED: true,
+    });
+    orders = new OrdersService(
+      store,
+      config,
+      upload as unknown as UploadsService,
+    );
+    payments = new OrderPaymentsService(store, orders, config);
+    for (const actor of [buyer, other, seller, admin])
+      await db.getRepository(User).save({
+        user_id: actor.user_id,
+        email: `${actor.user_id}@orders.test`,
+        password: 'unused-test-hash',
+        role: actor.role,
+      });
+    await db
+      .getRepository(EventCategory)
+      .save({ category_id: 'category', name: 'Music', slug: 'music' });
+    const reflector = new Reflector();
+    const audit = new AuditService();
+    const tokenService = {
+      verifyAccessToken: jest.fn((token: string) => {
+        if (![buyer, other, seller, admin].some((a) => a.user_id === token))
+          throw new UnauthorizedException();
+        return { user_id: token, tokenVersion: 0 };
+      }),
+    } as unknown as TokenService;
+    const usersService = {
+      findById: (id: string) =>
+        db.getRepository(User).findOneBy({ user_id: id }),
+    } as unknown as UsersService;
+    const module = await Test.createTestingModule({
+      controllers: [OrdersController],
+      providers: [
+        { provide: OrdersService, useValue: orders },
+        { provide: OrderPaymentsService, useValue: payments },
+        {
+          provide: APP_GUARD,
+          useValue: new AccessTokenGuard(
+            reflector,
+            tokenService,
+            usersService,
+            audit,
+          ),
+        },
+        { provide: APP_GUARD, useValue: new RolesGuard(reflector, audit) },
+      ],
+    }).compile();
+    app = module.createNestApplication();
+    configureApp(app);
+    await app.init();
+  });
+
+  afterAll(async () => {
+    if (app) await app.close();
+    if (db?.isInitialized) await db.destroy();
+    if (adminDb?.isInitialized) {
+      if (schemaCreated && /^orders_test_[a-f0-9]{32}$/.test(schema))
+        await adminDb.query(`DROP SCHEMA "${schema}" CASCADE`);
+      await adminDb.destroy();
+    }
+  });
+
+  beforeEach(async () => {
+    upload.readTicketFile.mockResolvedValue({
+      buffer: Buffer.from('ticket'),
+      mimetype: 'application/pdf',
+    });
+    event = await db.getRepository(Event).save({
+      event_id: randomUUID(),
+      name: 'Concert',
+      startTime: new Date(Date.now() + 3600000),
+      endTime: new Date(Date.now() + 7200000),
+      venueName: 'Hall',
+      address: 'City',
+      categoryId: 'category',
+      createdBy: 'seller',
+      status: EventStatus.PUBLISHED,
+    });
+    ticket = await db.getRepository(Ticket).save({
+      ticket_id: randomUUID(),
+      eventId: event.event_id,
+      sellerId: seller.user_id,
+      ticketTier: 'VIP',
+      originalPrice: 100000,
+      price: 80000,
+      status: TicketStatus.AVAILABLE,
+      ticketFileUrl: '/private?file=11111111-1111-4111-8111-111111111111.pdf',
+    });
+  });
+
+  async function pending(actor = buyer) {
+    const order = await orders.create(
+      actor,
+      { ticketId: ticket.ticket_id },
+      randomUUID(),
+    );
+    await payments.start(actor, order.order_id);
+    return order.order_id;
+  }
+
+  it('two successful payments allocate exactly one ticket and refund the loser', async () => {
+    const a = await pending(buyer);
+    const b = await pending(other);
+    expect(
+      (
+        await db
+          .getRepository(Ticket)
+          .findOneByOrFail({ ticket_id: ticket.ticket_id })
+      ).status,
+    ).toBe(TicketStatus.AVAILABLE);
+    const results = await Promise.all([
+      payments.result(buyer, a, 'success'),
+      payments.result(other, b, 'success'),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual(
+      [OrderStatus.PAID, OrderStatus.REFUND_PENDING].sort(),
+    );
+    expect(
+      await db
+        .getRepository(Order)
+        .countBy({ ticketId: ticket.ticket_id, allocated: true }),
+    ).toBe(1);
+    const sold = await db
+      .getRepository(Ticket)
+      .findOneByOrFail({ ticket_id: ticket.ticket_id });
+    expect(sold.buyerId).toBe(
+      results.find((r) => r.status === OrderStatus.PAID)!.buyerId,
+    );
+    const loser = results.find((r) => r.status === OrderStatus.REFUND_PENDING)!;
+    const refunded = await payments.refund(admin, loser.order_id);
+    expect(refunded.status).toBe(OrderStatus.REFUNDED);
+    await expect(
+      orders.file(
+        loser.buyerId === buyer.user_id ? buyer : other,
+        loser.order_id,
+      ),
+    ).rejects.toMatchObject({ status: 409 });
+    expect((await payments.refund(admin, loser.order_id)).status).toBe(
+      OrderStatus.REFUNDED,
+    );
+  });
+
+  it('concurrent create retries and result retries do not duplicate orders or payments', async () => {
+    const key = randomUUID();
+    const results = await Promise.all([
+      orders.create(buyer, { ticketId: ticket.ticket_id }, key),
+      orders.create(buyer, { ticketId: ticket.ticket_id }, key),
+    ]);
+    expect(results[0].order_id).toBe(results[1].order_id);
+    await expect(
+      orders.create(buyer, { ticketId: 'different' }, key),
+    ).rejects.toMatchObject({ status: 409 });
+    const id = results[0].order_id;
+    await Promise.all([payments.start(buyer, id), payments.start(buyer, id)]);
+    await Promise.all([
+      payments.result(buyer, id, 'success'),
+      payments.result(buyer, id, 'success'),
+    ]);
+    expect(await db.getRepository(OrderPayment).countBy({ orderId: id })).toBe(
+      1,
+    );
+    await expect(payments.result(buyer, id, 'failed')).rejects.toMatchObject({
+      status: 409,
+    });
+  });
+
+  it('late success after cancellation or expiry becomes a refund, never a sale', async () => {
+    const a = await pending();
+    await orders.cancel(buyer, a);
+    expect((await payments.result(buyer, a, 'success')).status).toBe(
+      OrderStatus.REFUND_PENDING,
+    );
+    const b = await pending();
+    await db
+      .getRepository(Order)
+      .update(b, { expiresAt: new Date(Date.now() - 1000) });
+    expect((await payments.result(buyer, b, 'success')).status).toBe(
+      OrderStatus.REFUND_PENDING,
+    );
+    expect(
+      (
+        await db
+          .getRepository(Ticket)
+          .findOneByOrFail({ ticket_id: ticket.ticket_id })
+      ).status,
+    ).toBe(TicketStatus.AVAILABLE);
+  });
+
+  it('cancellation racing payment leaves a coherent sale or refund', async () => {
+    const id = await pending();
+    await Promise.allSettled([
+      orders.cancel(buyer, id),
+      payments.result(buyer, id, 'success'),
+    ]);
+    const order = await db
+      .getRepository(Order)
+      .findOneByOrFail({ order_id: id });
+    const t = await db
+      .getRepository(Ticket)
+      .findOneByOrFail({ ticket_id: ticket.ticket_id });
+    expect([OrderStatus.PAID, OrderStatus.REFUND_PENDING]).toContain(
+      order.status,
+    );
+    expect(t.status).toBe(
+      order.status === OrderStatus.PAID
+        ? TicketStatus.SOLD
+        : TicketStatus.AVAILABLE,
+    );
+  });
+
+  it('rolls back ticket sale if saving the order fails', async () => {
+    const id = await pending();
+    await db.query(
+      `ALTER TABLE "${schema}".orders ADD CONSTRAINT test_block_paid CHECK (status <> 'paid') NOT VALID`,
+    );
+    try {
+      await expect(payments.result(buyer, id, 'success')).rejects.toBeDefined();
+    } finally {
+      await db.query(
+        `ALTER TABLE "${schema}".orders DROP CONSTRAINT test_block_paid`,
+      );
+    }
+    expect(
+      (
+        await db
+          .getRepository(Ticket)
+          .findOneByOrFail({ ticket_id: ticket.ticket_id })
+      ).status,
+    ).toBe(TicketStatus.AVAILABLE);
+    expect(
+      (await db.getRepository(OrderPayment).findOneByOrFail({ orderId: id }))
+        .receivedResult,
+    ).toBeNull();
+    expect((await payments.result(buyer, id, 'success')).status).toBe(
+      OrderStatus.PAID,
+    );
+  });
+
+  it('enforces ownership, self-purchase, private file and dispute management rules', async () => {
+    await expect(
+      orders.create(seller, { ticketId: ticket.ticket_id }, randomUUID()),
+    ).rejects.toMatchObject({ status: 400 });
+    const id = await pending();
+    await expect(orders.detail(other, id)).rejects.toMatchObject({
+      status: 404,
+    });
+    await expect(payments.start(other, id)).rejects.toMatchObject({
+      status: 404,
+    });
+    await expect(orders.file(buyer, id)).rejects.toMatchObject({ status: 409 });
+    await payments.result(buyer, id, 'success');
+    await orders.file(buyer, id);
+    await expect(orders.file(seller, id)).rejects.toMatchObject({
+      status: 404,
+    });
+    await orders.dispute(buyer, id, {
+      reason: 'Wrong tier',
+      evidence: 'Ticket image differs from listing',
+    });
+    await orders.reply(seller, id, 'Seller evidence');
+    await expect(
+      orders.resolve({ ...buyer, role: UserRole.ADMIN }, id, {
+        decision: 'accept',
+        note: 'Own order',
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    await expect(payments.payout(admin, id)).rejects.toMatchObject({
+      status: 409,
+    });
+    expect(
+      (
+        await orders.resolve(admin, id, {
+          decision: 'accept',
+          note: 'Evidence confirmed',
+        })
+      ).status,
+    ).toBe(OrderStatus.REFUND_PENDING);
+    await payments.refund(admin, id);
+    await expect(orders.file(buyer, id)).rejects.toMatchObject({ status: 409 });
+    expect(
+      (
+        await db
+          .getRepository(Ticket)
+          .findOneByOrFail({ ticket_id: ticket.ticket_id })
+      ).status,
+    ).toBe(TicketStatus.SOLD);
+  });
+
+  it('keeps paid orders recoverable when file I/O fails', async () => {
+    const id = await pending();
+    await payments.result(buyer, id, 'success');
+    upload.readTicketFile.mockRejectedValueOnce(new Error('File unavailable'));
+    await expect(orders.file(buyer, id)).rejects.toThrow('File unavailable');
+    expect((await orders.detail(buyer, id)).status).toBe(OrderStatus.PAID);
+    await orders.file(buyer, id);
+    expect((await orders.detail(buyer, id)).status).toBe(OrderStatus.DELIVERED);
+  });
+
+  it('expires pending orders and completes delivered orders, but not open disputes', async () => {
+    const id = await pending();
+    await payments.result(buyer, id, 'success');
+    await orders.file(buyer, id);
+    await db.getRepository(Event).update(event.event_id, {
+      startTime: new Date(Date.now() - 4 * 86400000),
+      endTime: new Date(Date.now() - 2 * 86400000),
+    });
+    await db
+      .getRepository(Order)
+      .update(id, { disputeUntil: new Date(Date.now() - 1000) });
+    await orders.sweep();
+    expect((await orders.detail(buyer, id)).status).toBe(OrderStatus.COMPLETED);
+    expect((await payments.payout(admin, id)).payoutStatus).toBe('paid');
+    expect((await payments.payout(admin, id)).payoutStatus).toBe('paid');
+  });
+
+  it('event cancellation triggers refunds and prevents late allocation', async () => {
+    const id = await pending();
+    await db
+      .getRepository(Event)
+      .update(event.event_id, { status: EventStatus.CANCELLED });
+    expect((await payments.result(buyer, id, 'success')).status).toBe(
+      OrderStatus.REFUND_PENDING,
+    );
+  });
+
+  it('failed payment can never be converted to success by a conflicting retry', async () => {
+    const id = await pending();
+    expect((await payments.result(buyer, id, 'failed')).status).toBe(
+      OrderStatus.CANCELLED,
+    );
+    await expect(payments.result(buyer, id, 'success')).rejects.toMatchObject({
+      status: 409,
+    });
+    expect(
+      (await db.getRepository(OrderPayment).findOneByOrFail({ orderId: id }))
+        .status,
+    ).toBe(PaymentStatus.FAILED);
+  });
+
+  it('blocks mock actions outside explicit development/test configuration', () => {
+    for (const config of [
+      { NODE_ENV: 'production', PAYMENT_MOCK_ENABLED: true },
+      { NODE_ENV: 'test', PAYMENT_MOCK_ENABLED: false },
+      { NODE_ENV: 'provision', PAYMENT_MOCK_ENABLED: true },
+    ]) {
+      const service = new OrderPaymentsService(
+        store,
+        orders,
+        new ConfigService(config),
+      );
+      expect(() => service.requireMock()).toThrow('Mock payments are disabled');
+    }
+  });
+
+  it('HTTP guards, ownership and DTOs reject forged financial data', async () => {
+    const server = app.getHttpServer();
+    await request(server)
+      .post('/api/orders')
+      .send({ ticketId: ticket.ticket_id })
+      .expect(401);
+    await request(server)
+      .get('/api/orders/manage')
+      .set('Authorization', 'Bearer buyer')
+      .expect(403);
+    await request(server)
+      .post('/api/orders')
+      .set('Authorization', 'Bearer buyer')
+      .set('Idempotency-Key', randomUUID())
+      .send({ ticketId: ticket.ticket_id, amount: 1, buyerId: 'other' })
+      .expect(400);
+    const created = await request(server)
+      .post('/api/orders')
+      .set('Authorization', 'Bearer buyer')
+      .set('Idempotency-Key', randomUUID())
+      .send({ ticketId: ticket.ticket_id })
+      .expect(201);
+    const id = (created.body as { order_id: string }).order_id;
+    await request(server)
+      .get(`/api/orders/me/${id}`)
+      .set('Authorization', 'Bearer other')
+      .expect(404);
+    await request(server)
+      .post(`/api/orders/me/${id}/payment`)
+      .set('Authorization', 'Bearer buyer')
+      .expect(200);
+    await request(server)
+      .post(`/api/orders/me/${id}/payment/mock-result`)
+      .set('Authorization', 'Bearer buyer')
+      .send({ result: 'success', amount: 1 })
+      .expect(400);
+    await request(server)
+      .post(`/api/orders/me/${id}/payment/mock-result`)
+      .set('Authorization', 'Bearer buyer')
+      .send({ result: 'success' })
+      .expect(200);
+    await request(server)
+      .get(`/api/orders/me/${id}/file`)
+      .set('Authorization', 'Bearer buyer')
+      .expect('Cache-Control', 'no-store')
+      .expect(200);
+    const detail = await request(server)
+      .get(`/api/orders/me/${id}`)
+      .set('Authorization', 'Bearer buyer')
+      .expect(200);
+    expect(detail.body).not.toHaveProperty('idempotencyKey');
+    expect(detail.body).not.toHaveProperty('allocated');
+    expect((detail.body as { ticket: unknown }).ticket).not.toHaveProperty(
+      'ticketFileUrl',
+    );
+  });
+
+  it('worker expires unpaid orders and leaves disputes blocked after the deadline', async () => {
+    const unpaid = await pending(other);
+    await db
+      .getRepository(Order)
+      .update(unpaid, { expiresAt: new Date(Date.now() - 1000) });
+    await orders.sweep();
+    expect((await orders.detail(other, unpaid)).status).toBe(
+      OrderStatus.EXPIRED,
+    );
+    const id = await pending();
+    await payments.result(buyer, id, 'success');
+    await orders.file(buyer, id);
+    await orders.dispute(buyer, id, {
+      reason: 'Rejected at entry',
+      evidence: 'Entry refusal reference',
+    });
+    await db.getRepository(Event).update(event.event_id, {
+      startTime: new Date(Date.now() - 4 * 86400000),
+      endTime: new Date(Date.now() - 2 * 86400000),
+    });
+    await db
+      .getRepository(Order)
+      .update(id, { disputeUntil: new Date(Date.now() - 1000) });
+    await orders.sweep();
+    expect((await orders.detail(buyer, id)).payoutStatus).toBe('blocked');
+    expect(
+      (
+        await orders.resolve(admin, id, {
+          decision: 'reject',
+          note: 'Evidence does not match this ticket',
+        })
+      ).status,
+    ).toBe(OrderStatus.COMPLETED);
+  });
+
+  it('refunds a paid order when its event is cancelled', async () => {
+    const id = await pending();
+    await payments.result(buyer, id, 'success');
+    await db
+      .getRepository(Event)
+      .update(event.event_id, { status: EventStatus.CANCELLED });
+    await orders.sweep();
+    const result = await orders.detail(buyer, id);
+    expect(result.status).toBe(OrderStatus.REFUND_PENDING);
+    expect(result.payment?.status).toBe(PaymentStatus.REFUND_PENDING);
+  });
+});

@@ -15,6 +15,13 @@ export const envValidationSchema = Joi.object({
     .valid('development', 'production', 'test', 'provision')
     .default('development'),
   PORT: Joi.number().default(3000),
+  PAYMENT_MOCK_ENABLED: Joi.boolean().default(false),
+  ORDERS_WORKER_ENABLED: Joi.boolean().default(false),
+  ORDER_PAYMENT_TIMEOUT_MINUTES: Joi.number()
+    .integer()
+    .min(1)
+    .max(60)
+    .default(15),
   UPLOAD_DIR: Joi.string().trim().min(1).default('uploads'),
   UPLOAD_MAX_FILE_SIZE_MB: Joi.number().integer().min(1).max(50).default(10),
   TICKET_WORKER_ENABLED: Joi.boolean().default(false),
@@ -22,8 +29,15 @@ export const envValidationSchema = Joi.object({
   TICKET_CODE_HMAC_SECRET: Joi.string().min(32).optional(),
   TICKET_PYTHON_PATH: Joi.string().trim().min(1).default('python'),
   TICKET_TESSERACT_PATH: Joi.string().trim().min(1).default('tesseract'),
-  TICKET_SCANNER_SCRIPT: Joi.string().trim().min(1).default('scripts/ticket-scanner/scan.py'),
-  TICKET_SCAN_TIMEOUT_SECONDS: Joi.number().integer().min(30).max(150).default(120),
+  TICKET_SCANNER_SCRIPT: Joi.string()
+    .trim()
+    .min(1)
+    .default('scripts/ticket-scanner/scan.py'),
+  TICKET_SCAN_TIMEOUT_SECONDS: Joi.number()
+    .integer()
+    .min(30)
+    .max(150)
+    .default(120),
   DB_HOST: Joi.string().required(),
   DB_PORT: Joi.number().default(5432),
   DB_USERNAME: Joi.string().required(),
