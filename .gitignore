@@ -45,6 +45,8 @@ desktop.ini
 .temp
 .tmp
 .cache
+/.venv-ticket-scanner/
+__pycache__/
 .eslintcache
 
 # Runtime & PIDs

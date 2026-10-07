@@ -1,5 +1,72 @@
 # API Tickets
 
+API quản trị và worker OCR/QR được mô tả tại [Kiểm tra/duyệt vé](./ticket-review-automation.md).
+
+## GET /api/tickets/me — Vé tôi đăng bán
+
+Mọi tài khoản đang hoạt động (USER/MODERATOR/ADMIN), gửi Bearer access token.
+Không cần body. Chỉ vé có sellerId bằng principal hiện tại; không nhận sellerId,
+buyerId hoặc userId từ client. Đây là vé người dùng đăng bán, chưa phải vé đã mua.
+
+Query page/limit/q/eventId/categoryId/ticketTier/minPrice/maxPrice/sort theo danh
+sách công khai bên dưới, thêm status tùy chọn: pending_review/rejected/available/
+holding/sold/cancelled/expired. Bỏ status lấy mọi trạng thái, kể cả Event đã hủy
+hoặc kết thúc. Mặc định page=1, limit=20, sort=newest; thứ tự phụ ticket_id ASC.
+
+Ví dụ: `GET /api/tickets/me?status=pending_review&page=1&limit=20`.
+Response 200 có data={items,total,page,limit}. Không có kết quả thì items=[], total=0.
+
+## GET /api/tickets/me/:id — Chi tiết vé tôi đăng
+
+Cùng quyền đăng nhập; path id là ticket_id, không cần body/query.
+Điều kiện chủ sở hữu nằm trong truy vấn database. Vé không tồn tại hoặc thuộc
+người khác đều không được trả; ADMIN/MODERATOR không vượt quyền sở hữu ở /me.
+Response 200 có data là một item theo cấu trúc dưới đây.
+
+### Cấu trúc item đầy đủ cho hai API /me
+
+```json
+{
+  "ticket_id": "ticket_example",
+  "eventId": "event_example",
+  "ticketTier": "VIP",
+  "seatInfo": "A15",
+  "originalPrice": 1000000,
+  "price": 800000,
+  "status": "rejected",
+  "description": "Pass vé do thay đổi lịch cá nhân.",
+  "createdAt": "2026-10-07T08:00:00.000Z",
+  "event": {
+    "event_id": "event_example",
+    "name": "Concert tháng 11",
+    "bannerUrl": "/api/events/event_example/images/banner?file=example.png",
+    "startTime": "2026-11-20T12:00:00.000Z",
+    "endTime": "2026-11-20T16:00:00.000Z",
+    "venueName": "Nhà hát thành phố",
+    "address": "Hà Nội",
+    "categoryId": "event_cat_music"
+  },
+  "updatedAt": "2026-10-07T09:00:00.000Z",
+  "reviewMethod": "manual",
+  "verifiedAt": "2026-10-07T09:00:00.000Z",
+  "rejectionReason": "Thông tin hạng vé không phù hợp với file.",
+  "check": {
+    "status": "completed",
+    "outcome": "needs_review",
+    "version": 1,
+    "completedAt": "2026-10-07T08:30:00.000Z"
+  }
+}
+```
+
+JSON giữ envelope success/statusCode/message/data/timestamp. Giá là number, thời
+gian ISO UTC. seatInfo/description/bannerUrl/reviewMethod/verifiedAt/rejectionReason
+có thể null. Check null với vé cũ chưa có bản ghi kiểm tra; outcome/completedAt
+có thể null lúc queued/processing. Outcome là kết quả xử lý hỗ trợ; status Ticket
+là trạng thái bán/duyệt chính. Không trả file, QR, OCR, hash/fingerprint, buyerId,
+người duyệt hoặc bản đăng trùng của người khác. Không thêm schema riêng cho /me;
+dùng schema kiểm tra vé của nhánh hiện tại. Chưa chạy build/TypeScript/test/Newman.
+
 ## DELETE /api/tickets/:id — Hủy đăng bán
 
 Yêu cầu đăng nhập, header `Authorization: Bearer <accessToken>`. Không cần body

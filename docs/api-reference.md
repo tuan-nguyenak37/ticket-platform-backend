@@ -333,6 +333,16 @@ Gửi giá trị đã chọn vào `categoryId` khi tìm kiếm hoặc tạo/sử
 
 ## 5. Danh sách vé (`GET /api/tickets`)
 
+### Vé của tôi
+
+`GET /api/tickets/me` và `GET /api/tickets/me/:id` dùng Bearer token, mọi role
+đang hoạt động. Chỉ trả vé người gọi đăng bán. Danh sách có phân trang/bộ lọc như
+public và thêm status, mặc định mọi trạng thái. Data là {items,total,page,limit}
+hoặc một item chi tiết, có tóm tắt check, reviewMethod/verifiedAt/rejectionReason.
+Không trả file, QR, OCR, buyerId hoặc dữ liệu kiểm duyệt riêng. [Chi tiết](./tickets-api.md).
+
+### Danh sách công khai
+
 Public, không cần token/body. Query: `page` (1), `limit` (20, tối đa 100),
 `categoryId`, `eventId`, `ticketTier`, `minPrice`, `maxPrice`, `q`, `sort`.
 Các bộ lọc kết hợp; hạng vé khớp toàn bộ không phân biệt hoa thường, q tìm
@@ -343,6 +353,13 @@ Chỉ trả vé available thuộc sự kiện published chưa kết thúc. Respo
 sự kiện (tên, banner, thời gian, địa điểm, categoryId), không trả file vé hay buyerId.
 
 [Tham số và response chi tiết](./tickets-api.md).
+
+### Kiểm tra và duyệt vé
+
+ADMIN/MODERATOR dùng GET `/api/tickets/manage`, GET `/api/tickets/manage/:id`,
+GET `/api/tickets/manage/:id/file`, POST `/api/tickets/manage/:id/check` (202),
+PATCH `/api/tickets/:id/review` (200). Chi tiết body/query/response và cài worker
+local tại [Hợp đồng kiểm tra vé](./ticket-review-automation.md).
 
 ### Hủy vé — DELETE /api/tickets/:id
 

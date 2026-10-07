@@ -165,3 +165,10 @@ const orders = await orderRepository.find({
 ```
 
 Hành động kiểm duyệt của admin cần endpoint/policy riêng và lý do; không tái sử dụng chức năng sửa của người bán để vượt điều kiện sở hữu.
+
+## Kiểm tra/duyệt vé
+
+ADMIN và MODERATOR được xem danh sách, báo cáo, file gốc và xử lý kiểm duyệt vé.
+Không tự duyệt vé mình đăng; không cấp quyền giả danh người mua/bán. Worker tự
+duyệt theo bộ điều kiện nghiêm ngặt khi cấu hình bật. API public không trả file,
+OCR, mã vé hoặc fingerprint. Hợp đồng chi tiết: [kiểm tra vé](./ticket-review-automation.md).

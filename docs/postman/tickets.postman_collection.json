@@ -470,6 +470,291 @@
         },
         "description": "Hủy vé của chính mình: pending_review/rejected/available → cancelled. Giữ bản ghi và file vé. Chạy sau Create Ticket; không dùng vé holding/sold."
       }
+    },
+    {
+      "name": "05 - Review management",
+      "item": [
+        {
+          "name": "Review - Login ADMIN",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Luồng quản trị vé; chưa chạy request tự động."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.environment.set('reviewToken', pm.response.json().data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Review - List tickets needing review",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/tickets/manage?page=1&limit=20",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{reviewToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "description": "Luồng quản trị vé; chưa chạy request tự động."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const item = pm.response.json().data.items?.[0];",
+                  "  if (item) pm.environment.set('reviewTicketId', item.ticket_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Review - Ticket report",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/tickets/manage/{{reviewTicketId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{reviewToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "description": "Luồng quản trị vé; chưa chạy request tự động."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.unset('selectedCodeId');",
+                  "pm.environment.unset('checkVersion');",
+                  "if (pm.response.code === 200) {",
+                  "  const check = pm.response.json().data.check;",
+                  "  if (check?.status === 'completed') {",
+                  "    pm.environment.set('checkVersion', check.version);",
+                  "    if (check.codes?.length === 1) pm.environment.set('selectedCodeId', check.codes[0].id);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Review - View original file",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/tickets/manage/{{reviewTicketId}}/file",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{reviewToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "description": "Luồng quản trị vé; chưa chạy request tự động."
+          }
+        },
+        {
+          "name": "Review - Recheck pending ticket",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/tickets/manage/{{reviewTicketId}}/check",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{reviewToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "description": "Chỉ vé pending. Chạy theo nhu cầu; sau đó đọc lại report khi worker hoàn tất để lấy version/code mới."
+          }
+        },
+        {
+          "name": "Review - Approve ticket",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/tickets/{{reviewTicketId}}/review",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{reviewToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"approve\",\n  \"checkVersion\": {{checkVersion}},\n  \"selectedCodeId\": \"{{selectedCodeId}}\",\n  \"note\": \"Đã xem file gốc và đối chiếu các cảnh báo.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Chọn vé pending của người khác có check completed và mã đọc được. Lấy version/code từ Ticket report. Với nhiều mã chọn selectedCodeId thủ công. Approve và Reject là lựa chọn thay thế, không chạy cả hai trên cùng vé."
+          }
+        },
+        {
+          "name": "Review - Reject ticket",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/tickets/{{reviewTicketId}}/review",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{reviewToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"reject\",\n  \"reason\": \"Thông tin vé không phù hợp với file đính kèm.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Chọn một vé pending khác nếu vé trước đã approve. Không tự duyệt/từ chối vé mình đăng."
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - My tickets",
+      "item": [
+        {
+          "name": "My tickets - List",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/tickets/me?page=1&limit=20&sort=newest",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "description": "Vé chính tài khoản đăng bán, mọi trạng thái. Có thể thêm status/categoryId/eventId/ticketTier/minPrice/maxPrice/q."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.unset('myTicketId');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const item = pm.response.json().data.items?.[0];",
+                  "  if (item) pm.environment.set('myTicketId', item.ticket_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My tickets - Detail",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/tickets/me/{{myTicketId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "description": "Dùng myTicketId lấy từ My tickets - List; chỉ vé tài khoản đang đăng nhập sở hữu."
+          }
+        }
+      ]
     }
   ]
 }

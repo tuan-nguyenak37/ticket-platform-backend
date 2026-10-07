@@ -13,11 +13,17 @@ import { generateId } from '../../../common/utils/generateId';
 import { Event } from '../../events/entities/event.entity';
 import { User } from '../../users/entities/user.entity';
 import { TicketStatus } from './enums/ticket-status.enum';
+import { ReviewMethod } from '../review/check.types';
 
 @Entity('tickets')
 @Index(['eventId', 'status'])
 @Index(['sellerId', 'status'])
 @Index(['status'])
+@Index('IDX_tickets_file_hash', ['fileHash'])
+@Index('UQ_tickets_active_code', ['eventId', 'approvedCodeFingerprint'], {
+  unique: true,
+  where: `"approvedCodeFingerprint" IS NOT NULL AND "status" IN ('available', 'holding', 'sold')`,
+})
 export class Ticket {
   @PrimaryColumn({
     type: 'varchar',
@@ -82,6 +88,15 @@ export class Ticket {
     type: 'text',
   })
   ticketFileUrl!: string;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  fileHash!: string | null;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  approvedCodeFingerprint!: string | null;
+
+  @Column({ type: 'varchar', length: 10, nullable: true })
+  reviewMethod!: ReviewMethod | null;
 
   @Column({
     type: 'enum',

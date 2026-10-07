@@ -105,3 +105,11 @@ Các tình huống bàn giao chưa chạy trên runtime/database:
 - Danh sách trả 0–4 phần tử, đúng thứ tự, không chứa createdBy, không tự bù sự kiện khác.
 - Body ghim bắt buộc boolean; API nội dung không nhận isPinned/pinnedAt;
   /api/events/pinned không bị hiểu nhầm thành route /:id.
+
+## Kiểm tra/duyệt vé — 07/10/2026
+
+Đã triển khai OCR local, đọc QR/barcode, queue PostgreSQL, tự duyệt và API quản trị.
+Theo yêu cầu không chạy build, TypeScript, test, Newman, scanner hoặc worker.
+Chưa cài dependencies Python/Tesseract, chạy SQL/migration/seed hoặc xác minh runtime.
+Tự duyệt và worker nhúng API mặc định tắt. Phải cài runtime, áp dụng schema và
+đánh giá độ chính xác/đồng thời trước bật tự duyệt.

@@ -1,6 +1,25 @@
 import { Ticket } from '../entities/ticket.entity';
+import type { TicketCheck } from '../entities/ticket-check.entity';
 
 export class TicketResponseDto {
+  static mine(ticket: Ticket & { check?: TicketCheck }) {
+    return {
+      ...this.listItem(ticket),
+      updatedAt: ticket.updatedAt,
+      reviewMethod: ticket.reviewMethod ?? null,
+      verifiedAt: ticket.verifiedAt ?? null,
+      rejectionReason: ticket.rejectionReason ?? null,
+      check: ticket.check
+        ? {
+            status: ticket.check.status,
+            outcome: ticket.check.outcome,
+            version: ticket.check.version,
+            completedAt: ticket.check.completedAt,
+          }
+        : null,
+    };
+  }
+
   static listItem(ticket: Ticket) {
     return {
       ...this.public(ticket),
@@ -35,6 +54,7 @@ export class TicketResponseDto {
       description: ticket.description,
       createdAt: ticket.createdAt,
       updatedAt: ticket.updatedAt,
+      reviewMethod: ticket.reviewMethod ?? null,
     };
   }
 

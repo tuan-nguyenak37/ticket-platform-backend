@@ -163,6 +163,10 @@ export class UploadsService {
     );
   }
 
+  ticketFilePath(filename: string): string {
+    return this.ticketPath(filename);
+  }
+
   async removeTicketFile(filename: string): Promise<void> {
     try {
       await unlink(this.ticketPath(filename));

@@ -9,6 +9,8 @@ Tài liệu cập nhật theo mã nguồn Auth/Users ngày 30/09/2026.
 | [JWT và phiên đăng nhập](./auth-session-updates.md) | Cookie, thu hồi token, cấu hình và yêu cầu database |
 | [API người dùng](./users-api.md) | Hồ sơ cá nhân, đổi mật khẩu và API quản trị |
 | [API vé](./tickets-api.md) | Danh sách public, lọc/tìm kiếm/phân trang và hủy đăng bán |
+| [Kiểm tra/duyệt vé](./ticket-review-automation.md) | OCR local, QR/barcode, chống trùng, tự duyệt và duyệt thủ công |
+| [SQL kiểm tra vé](./ticket-review-automation.sql) | Schema/index cho môi trường tắt synchronize |
 | [API sự kiện](./events-api.md) | Đủ 11 endpoint: đường dẫn, tham số, kiểu dữ liệu và ví dụ response thành công chi tiết |
 | [API thể loại sự kiện](./event-categories-api.md) | Danh sách category đang hoạt động, public cho trang chủ, tìm kiếm và form sự kiện |
 | [SQL chỉ dùng banner](./event-banner-only.sql) | Bỏ cột ảnh đại diện và mô tả ngắn cũ khi synchronize tắt |
