@@ -46,6 +46,7 @@ desktop.ini
 .tmp
 .cache
 /.venv-ticket-scanner/
+/.runtime/ticket-ocr/
 __pycache__/
 .eslintcache
 
