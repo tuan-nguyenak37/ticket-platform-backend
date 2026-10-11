@@ -725,6 +725,95 @@
           "listen": "test"
         }
       ]
+    },
+    {
+      "name": "ticket",
+      "item": [
+        {
+          "name": "Create Ticket (POST /api/tickets)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "type": "text",
+                  "key": "eventId",
+                  "value": "{{eventId}}"
+                },
+                {
+                  "type": "text",
+                  "key": "ticketTier",
+                  "value": "VIP Khán đài A"
+                },
+                {
+                  "type": "text",
+                  "key": "seatInfo",
+                  "value": "Dãy C - Ghế 15"
+                },
+                {
+                  "type": "text",
+                  "key": "originalPrice",
+                  "value": "1500000"
+                },
+                {
+                  "type": "text",
+                  "key": "price",
+                  "value": "1200000"
+                },
+                {
+                  "type": "text",
+                  "key": "description",
+                  "value": "Bận việc đột xuất nên pass lại vé giá mềm"
+                },
+                {
+                  "type": "file",
+                  "key": "ticketFile",
+                  "src": "D:/HK1-2026_2027/Do_an_nganh/project/backend/.tmp/postman-files/banner.png"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tickets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tickets"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) {",
+                  "  const d = pm.response.json().data;",
+                  "  pm.test(\"Status is pending_review\", () => pm.expect(d.status).to.eql(\"pending_review\"));",
+                  "  pm.test(\"Ticket ID generated\", () => pm.expect(d.ticket_id).to.match(/^ticket_/));",
+                  "  pm.environment.set(\"ticketId\", d.ticket_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -1,0 +1,90 @@
+-- Seed dữ liệu mẫu cho bảng "tickets" phục vụ kiểm thử hệ thống bán vé
+-- Các vé gắn liền với sự kiện mẫu và người bán mẫu trong mock-users.seed.sql
+
+INSERT INTO tickets (
+  "ticket_id",
+  "event_id",
+  "seller_id",
+  "ticketTier",
+  "seatInfo",
+  "originalPrice",
+  "price",
+  "ticketFileUrl",
+  "fileHash",
+  "approvedCodeFingerprint",
+  "reviewMethod",
+  "status",
+  "description",
+  "createdAt",
+  "updatedAt"
+)
+VALUES
+  (
+    'tkt_seed_avail_001',
+    'evt_mock_001',
+    'usr_mock_user_seller_004',
+    'VIP Diamond',
+    'Dãy 1, Ghế 08',
+    2000000,
+    1800000,
+    '/api/tickets/tkt_seed_avail_001/file?file=tkt_001.pdf',
+    'hash_mock_001_sha256',
+    'fp_qr_code_001',
+    'auto',
+    'available',
+    'Vé VIP Diamond gần sân khấu chính',
+    NOW() - INTERVAL '3 days',
+    NOW() - INTERVAL '3 days'
+  ),
+  (
+    'tkt_seed_pending_002',
+    'evt_mock_001',
+    'usr_mock_user_seller_004',
+    'Standard GA',
+    'Khu vực Đứng Tự Do',
+    800000,
+    750000,
+    '/api/tickets/tkt_seed_pending_002/file?file=tkt_002.pdf',
+    'hash_mock_002_sha256',
+    NULL,
+    NULL,
+    'pending_review',
+    'Vé phổ thông chờ kiểm duyệt',
+    NOW() - INTERVAL '1 days',
+    NOW() - INTERVAL '1 days'
+  ),
+  (
+    'tkt_seed_sold_003',
+    'evt_mock_001',
+    'usr_mock_user_seller_004',
+    'VIP Gold',
+    'Dãy 3, Ghế 15',
+    1500000,
+    1300000,
+    '/api/tickets/tkt_seed_sold_003/file?file=tkt_003.pdf',
+    'hash_mock_003_sha256',
+    'fp_qr_code_003',
+    'manual',
+    'sold',
+    'Vé đã bán thành công',
+    NOW() - INTERVAL '5 days',
+    NOW() - INTERVAL '2 days'
+  ),
+  (
+    'tkt_seed_cancelled_004',
+    'evt_mock_001',
+    'usr_mock_user_seller_004',
+    'Standard GA',
+    'Khu vực Khán Đài B',
+    700000,
+    600000,
+    '/api/tickets/tkt_seed_cancelled_004/file?file=tkt_004.pdf',
+    'hash_mock_004_sha256',
+    NULL,
+    NULL,
+    'cancelled',
+    'Người bán đã tự hủy đăng bán',
+    NOW() - INTERVAL '6 days',
+    NOW() - INTERVAL '4 days'
+  )
+ON CONFLICT ("ticket_id") DO NOTHING;

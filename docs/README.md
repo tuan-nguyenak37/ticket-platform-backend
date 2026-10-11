@@ -1,6 +1,14 @@
 # Tài liệu backend
 
-Tài liệu cập nhật theo mã nguồn Auth/Users ngày 30/09/2026.
+Tài liệu đối chiếu mã nguồn ngày 07/10/2026. Backend phục vụ sàn nhượng lại vé sự
+kiện, dùng NestJS, TypeORM và PostgreSQL; ảnh/PDF lưu local. Người dùng có thể
+vừa mua vừa bán theo thiết kế sản phẩm; hiện API tập trung vào tài khoản, sự kiện,
+đăng bán, kiểm duyệt vé và Orders. Đã có API đơn hàng, thanh toán giả lập,
+bàn giao file và tranh chấp; chưa tích hợp VNPay hoặc giao dịch tiền thật.
+
+Luồng đăng bán: đăng vé → pending_review và job queued → worker đọc OCR/QR →
+duyệt thành available hoặc từ chối thành rejected. Chỉ vé available của sự kiện
+published chưa kết thúc xuất hiện công khai. Tự duyệt mặc định tắt.
 
 | Tài liệu | Nội dung |
 | --- | --- |
@@ -8,7 +16,10 @@ Tài liệu cập nhật theo mã nguồn Auth/Users ngày 30/09/2026.
 | [API xác thực](./auth-api.md) | Đăng ký, đăng nhập, refresh, logout và định dạng response |
 | [JWT và phiên đăng nhập](./auth-session-updates.md) | Cookie, thu hồi token, cấu hình và yêu cầu database |
 | [API người dùng](./users-api.md) | Hồ sơ cá nhân, đổi mật khẩu và API quản trị |
-| [API vé](./tickets-api.md) | Danh sách public, lọc/tìm kiếm/phân trang và hủy đăng bán |
+| [API vé](./tickets-api.md) | Đăng vé, danh sách public, vé tôi đăng, lọc/tìm kiếm/phân trang và hủy đăng bán |
+| [Orders và thanh toán](./orders-api.md) | Không giữ vé, chốt giao dịch, thanh toán giả lập, nhận vé, tranh chấp và đối soát |
+| [SQL Orders](./orders-schema.sql) | Ba bảng và ràng buộc chốt vé khi synchronize tắt |
+| [Collection Orders](./postman/orders.postman_collection.json) | Luồng mua, thanh toán giả lập, tranh chấp, hoàn tiền và chi trả |
 | [Kiểm tra/duyệt vé](./ticket-review-automation.md) | OCR local, QR/barcode, chống trùng, tự duyệt và duyệt thủ công |
 | [SQL kiểm tra vé](./ticket-review-automation.sql) | Schema/index cho môi trường tắt synchronize |
 | [API sự kiện](./events-api.md) | Đủ 11 endpoint: đường dẫn, tham số, kiểu dữ liệu và ví dụ response thành công chi tiết |
@@ -22,6 +33,15 @@ Tài liệu cập nhật theo mã nguồn Auth/Users ngày 30/09/2026.
 | [Trạng thái kiểm chứng](./verification-status.md) | Kết quả đã có và các bước chưa thực hiện |
 | [SQL tokenVersion](./token-version.sql) | Bổ sung cột phiên đăng nhập khi database chưa có |
 | [Collection Auth](./postman/login.postman_collection.json) | Login, refresh bằng cookie, hồ sơ hiện tại và logout |
+| [Collection Tickets](./postman/tickets.postman_collection.json) | Đăng, tìm kiếm, hủy, kiểm duyệt và xem vé tôi đăng |
+| [Postman local](./postman/local-setup.md) | Cấu hình environment và cách dùng các collection |
+| [Hướng dẫn kiểm thử từng Module](./module-testing-guide.md) | Tài liệu hướng dẫn chi tiết cách chạy Unit, E2E và Postman cho từng module |
+| [Báo cáo kết quả kiểm thử hệ thống](./software-test-report.md) | Báo cáo lịch sử và cập nhật kiểm chứng 11/10: 217 test đạt, 14 test bỏ qua; còn lỗi TypeScript trong test |
+| [Đặc tả kiểm thử Auth](./test-cases/auth-module-test-specification.md) | Kịch bản kiểm thử đăng ký, đăng nhập, cookie và phân quyền |
+| [Đặc tả kiểm thử Users](./test-cases/user-module-test-specification.md) | Kịch bản và dữ liệu kiểm thử tài khoản |
+| [Đặc tả kiểm thử Events](./test-cases/events-module-test-specification.md) | Kịch bản quản lý sự kiện và ghim |
+| [Đặc tả kiểm thử Tickets](./test-cases/tickets-module-test-specification.md) | Kịch bản đăng, xem và hủy vé |
+| [Đặc tả kiểm thử Orders](./test-cases/orders-module-test-specification.md) | Kịch bản tạo đơn, idempotency, thanh toán và tranh chấp |
 
 ## Thông tin chung
 
@@ -39,4 +59,9 @@ Tài liệu cập nhật theo mã nguồn Auth/Users ngày 30/09/2026.
 - `DELETE /api/users/:id` đã bỏ.
 - Đổi mật khẩu qua `PATCH /api/users/me/password`, sau đó đăng nhập lại.
 - MODERATOR chưa có quyền quản lý người khác.
-- Module vé đã có tạo vé và danh sách công khai; các nghiệp vụ duyệt vé/đơn hàng trong tài liệu thiết kế chưa phải endpoint đã triển khai.
+- Module vé đã có đăng vé, danh sách công khai, vé tôi đăng, hủy đăng bán và API kiểm duyệt cho ADMIN/MODERATOR. Không tự duyệt vé mình đăng.
+- `/api/tickets/me` là vé đã đăng bán. Xem đơn mua qua `/api/orders/me?side=buyer`;
+  nhận file vé đã mua qua `/api/orders/me/:id/file`.
+- Tạo đơn không giữ vé; thanh toán được backend chốt trước nhận vé, khoản thành
+  công đến sau chuyển refund_pending. Mock chỉ bật rõ ràng ở development/test.
+- Đặc tả test và collection không chứng minh đã chạy thành công; xem trạng thái kiểm chứng theo từng mốc thời gian.

@@ -1,5 +1,19 @@
 # Trạng thái kiểm chứng và bàn giao
 
+## Kiểm tra trước commit bộ test — 11/10/2026
+
+- `npm test -- --runInBand`: 22 suites đạt, 1 suite bỏ qua; 217 tests đạt, 14 tests bỏ qua. Suite PostgreSQL cần bật `ORDERS_PG_TEST`; lượt này không chạy kiểm thử database hoặc E2E.
+- `npx tsc --noEmit --incremental false`: chưa đạt, có 8 lỗi kiểu dữ liệu trong `auth.controller.spec.ts`, `orders.service.spec.ts`, `ticket-review.service.spec.ts`. Kết quả Jest đạt không thay thế kiểm tra kiểu dữ liệu toàn dự án.
+- Các seed SQL được lưu làm dữ liệu mẫu, chưa thực thi hoặc xác minh trong lượt commit này.
+
+## Đối chiếu tài liệu — 07/10/2026
+
+Đã đối chiếu Auth/Users/Tickets với controller, DTO và service; cập nhật phạm vi
+module, phân quyền duyệt vé, ví dụ request/response và hợp đồng đăng bán vé.
+Các kết quả build/test/Newman bên dưới thuộc từng lượt lịch sử, không xác nhận
+toàn bộ mã nguồn hiện tại đã được kiểm thử. Lượt này chỉ cập nhật tài liệu và
+kiểm tra liên kết/nội dung; không chạy build, test, API, worker, SQL hoặc seed.
+
 ## Events chỉ dùng banner — 05/10/2026
 
 Đã bỏ thumbnail/thumbnailUrl và shortDescription khỏi entity, DTO, API tạo/sửa
@@ -108,11 +122,23 @@ Các tình huống bàn giao chưa chạy trên runtime/database:
 
 ## Kiểm tra/duyệt vé — 07/10/2026
 
-Đã triển khai OCR local, đọc QR/barcode, queue PostgreSQL, tự duyệt và API quản trị.
-Theo yêu cầu không chạy build, TypeScript, test, Newman, scanner hoặc worker.
-Chưa cài dependencies Python/Tesseract, chạy SQL/migration/seed hoặc xác minh runtime.
-Tự duyệt và worker nhúng API mặc định tắt. Phải cài runtime, áp dụng schema và
-đánh giá độ chính xác/đồng thời trước bật tự duyệt.
+### Cấu hình local bổ sung
+
+Đã cài runtime Python/Tesseract và dữ liệu vie/eng, áp dụng SQL bổ sung vào
+PostgreSQL local, lưu HMAC secret trong .env (ignored) và tắt synchronize.
+Đã khởi động worker riêng, ghi nhận module/database khởi tạo thành công.
+Tự duyệt vẫn tắt. Chưa chạy OCR trên vé, build, TypeScript riêng, test hoặc Newman.
+API local cổng 7000 chưa chạy trong lượt này. Các mục chưa kiểm chứng bên dưới
+là trạng thái ở thời điểm commit code trước khi cấu hình runtime.
+
+### Lịch sử trước cấu hình local
+
+Lượt triển khai code đã bổ sung OCR local, QR/barcode, queue PostgreSQL, tự duyệt
+và API quản trị nhưng chưa chạy build, TypeScript, test, Newman, scanner hoặc
+worker; chưa cài dependencies hoặc áp dụng SQL ở thời điểm đó. Bước cấu hình
+local phía trên đã bổ sung runtime/schema và khởi tạo worker. Chưa có kết quả
+OCR trên vé hoặc kiểm thử duyệt vé/đồng thời; tự duyệt và worker nhúng API vẫn tắt.
+
 
 ## PDF/OCR upgrade verification - 2026-10-11
 

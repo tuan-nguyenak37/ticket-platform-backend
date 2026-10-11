@@ -149,9 +149,33 @@ ghi tickets.check và tickets.review.automatic. Không log OCR, mã vé, file ho
 
 ## Trạng thái bàn giao
 
-Chỉ triển khai code/docs/Postman. Không chạy build, TypeScript, test, Newman,
-scanner, worker, migration hoặc seed; chưa cài dependencies hệ thống. Tự duyệt
-mặc định tắt, chỉ bật sau đánh giá OCR và các tình huống đồng thời trên dữ liệu thực.
+### Cấu hình runtime local — 07/10/2026
+
+Đã cài Tesseract 5.4.0.20240606 ở C:/Program Files/Tesseract-OCR; virtualenv
+.venv-ticket-scanner có Pillow 12.3.0, pypdfium2 5.14.0, zxing-cpp 3.1.1.
+vie.traineddata được tải từ repo chính thức tesseract-ocr/tessdata_fast; eng và
+configs được sao chép từ bộ cài vào .runtime/ticket-ocr/tessdata. Thư mục runtime
+và virtualenv được ignore; TESSDATA_PREFIX trong .env trỏ tới thư mục local này.
+
+Đã áp dụng SQL bổ sung vào PostgreSQL local, lưu secret HMAC riêng trong .env
+và đặt DB_SYNCHRONIZE=false. TICKET_WORKER_ENABLED=false cho API, worker chạy
+riêng bằng npm run worker:tickets. TICKET_AUTO_APPROVE_ENABLED vẫn false.
+Worker đã khởi tạo và kết nối PostgreSQL; chưa chạy OCR trên vé hay bộ kiểm thử.
+API chưa chạy ở cổng 7000 trong lượt cấu hình này; cần khởi động lại API để đọc
+cấu hình/schema mới. Không build, kiểm tra TypeScript riêng, test hoặc Newman.
+
+TESSDATA_PREFIX phải trỏ tới thư mục chứa cả traineddata và configs/tsv; chỉ sao
+chép hai file ngôn ngữ sẽ thiếu cấu hình đầu ra TSV. Khi chuyển máy, cài lại runtime
+và cập nhật các đường dẫn .env; không sao chép secret ra docs hoặc collection.
+
+### Lịch sử trước bước cấu hình runtime
+
+Lượt triển khai code/docs/Postman ban đầu chưa chạy build, TypeScript, test,
+Newman, scanner, worker, migration hoặc seed và chưa cài dependencies hệ thống.
+Bước cấu hình local ngày 07/10/2026 ở trên đã bổ sung runtime/schema và xác nhận
+worker khởi tạo; chưa chứng minh OCR xử lý vé hoặc duyệt vé thành công.
+Tự duyệt mặc định tắt, chỉ bật sau đánh giá OCR và tình huống đồng thời trên dữ liệu thực.
+
 
 ## Nâng cấp PDF/OCR ngày 11/10/2026
 
