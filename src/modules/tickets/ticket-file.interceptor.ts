@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
-import { createUploadOptions, UPLOAD_TYPES } from '../../common/uploads/upload.config';
+import { createUploadOptions } from '../../common/uploads/upload.config';
 
 @Injectable()
 export class TicketFileInterceptor implements NestInterceptor {
@@ -21,9 +21,9 @@ export class TicketFileInterceptor implements NestInterceptor {
         ...options,
         limits: { ...options.limits, files: 1, parts: 21 },
         fileFilter: (request, file, callback) => {
-          if (!Object.hasOwn(UPLOAD_TYPES, file.mimetype)) {
+          if (file.mimetype !== 'application/pdf') {
             return callback(
-              new BadRequestException('Ticket files must be PDF or image (JPEG, PNG, WebP)'),
+              new BadRequestException('Ticket files must be PDF'),
               false,
             );
           }

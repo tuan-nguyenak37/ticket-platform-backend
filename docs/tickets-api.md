@@ -18,7 +18,7 @@ multipart/form-data; để Postman/trình duyệt tự đặt Content-Type kèm 
 | price | Có | Số từ 1–1.000.000.000, tối đa 2 chữ số thập phân |
 | seatInfo | Không | Chuỗi trim, tối đa 100 ký tự |
 | description | Không | Chuỗi trim, tối đa 2000 ký tự |
-| ticketFile | Có | Đúng một file PDF/JPEG/PNG/GIF/WebP, mặc định tối đa 10 MB |
+| ticketFile | Có | Đúng một file PDF, mặc định tối đa 10 MB |
 
 Các trường số có thể gửi dạng text thập phân trong multipart, không dùng dấu
 phân cách hàng nghìn. Hiện không có ràng buộc price phải nhỏ hơn originalPrice.

@@ -113,3 +113,11 @@ Theo yêu cầu không chạy build, TypeScript, test, Newman, scanner hoặc wo
 Chưa cài dependencies Python/Tesseract, chạy SQL/migration/seed hoặc xác minh runtime.
 Tự duyệt và worker nhúng API mặc định tắt. Phải cài runtime, áp dụng schema và
 đánh giá độ chính xác/đồng thời trước bật tự duyệt.
+
+## PDF/OCR upgrade verification - 2026-10-11
+
+- Ticket module: 6 suites, 43 tests passed (`npm test -- --runInBand src/modules/tickets`). Includes rejection of image uploads and PNG bytes disguised as PDF, and optional unparseable price preventing automatic approval.
+- Python extraction: 8 tests passed (`python -m unittest discover -s scripts/ticket-scanner -p test_*.py`). Covers conflicting/invalid evidence, calendar/time validation, Unicode and price normalization.
+- Real local PDF render + Tesseract + QR scan: all 5 generated image-only PDFs completed. Code counts: ticket=1, duplicate-code=1, missing-code=0, multiple-codes=2, uncertain-price=1. USD price retained evidence with null value. Some OCR fields scored below 95, correctly requiring manual review.
+- `npm run build`: passed. No production queue, database approval, payment, or real issuer validation was exercised. Automatic approval remains disabled.
+- Full-project `tsc --noEmit --incremental false` in the preceding review had existing test typing failures in auth.controller.spec.ts, orders.service.spec.ts and ticket-review.service.spec.ts; this ticket-scoped verification does not claim full-project test health.

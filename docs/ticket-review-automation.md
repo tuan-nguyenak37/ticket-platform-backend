@@ -9,7 +9,7 @@ mã QR/barcode, OCR local, đối chiếu và thử duyệt. API không chờ OC
 Một Ticket tương ứng một vé. Tesseract vie+eng và bộ quy tắc trích xuất đọc các
 nhãn rõ ràng: eventName/date/time/venue/ticketTier/seat/originalPrice. Không có LLM
 hoặc dịch vụ AI cloud. Không thấy nhãn/giá trị mâu thuẫn thì missing/uncertain;
-không điền từ thông tin người bán. Chỉ nhận định dạng ngày dd/mm/yyyy hoặc dd-mm-yyyy;
+không điền từ thông tin người bán. Nhận ngày d/m/yyyy, d-m-yyyy hoặc d.m.yyyy và kiểm tra ngày lịch hợp lệ;
 OCR giá gốc hỗ trợ VND nguyên, chưa tự suy luận tiền tệ/giá có phần thập phân.
 
 TICKET_AUTO_APPROVE_ENABLED mặc định false. Khi bật, các điều kiện phải đồng thời đạt:
@@ -152,3 +152,24 @@ ghi tickets.check và tickets.review.automatic. Không log OCR, mã vé, file ho
 Chỉ triển khai code/docs/Postman. Không chạy build, TypeScript, test, Newman,
 scanner, worker, migration hoặc seed; chưa cài dependencies hệ thống. Tự duyệt
 mặc định tắt, chỉ bật sau đánh giá OCR và các tình huống đồng thời trên dữ liệu thực.
+
+## Nâng cấp PDF/OCR ngày 11/10/2026
+
+- Đăng vé mới chỉ nhận một PDF; MIME phải là application/pdf và nội dung phải có chữ ký PDF. Banner sự kiện vẫn dùng ảnh. Vé ảnh đã lưu trước đây vẫn đọc và kiểm tra lại được.
+- Scanner local-ticket-v2 render từng trang PDF thành ảnh rồi chạy OCR vie+eng; không dùng lớp text nhúng. Giới hạn 5 trang, 20 triệu pixel/trang, timeout OCR 30 giây/trang.
+- Chuẩn hóa Unicode NFC, khoảng trắng, ngày và giờ (9h05 thành 09:05). Giá nguyên hỗ trợ dấu phân cách hàng nghìn nhất quán: 1.000.000, 1,000,000 hoặc 1 000 000; không suy đoán tiền tệ hoặc số thập phân.
+- Nhãn có giá trị trống/không phân tích được vẫn giữ evidence. Một giá trị lỗi hoặc các giá trị mâu thuẫn làm trường uncertain, kể cả trường tùy chọn; report needs_review. Xét tất cả ứng viên trước khi giới hạn 5 dòng evidence.
+- Giữ TICKET_AUTO_APPROVE_ENABLED=false. OCR và QR không xác nhận vé thật hoặc vé chưa sử dụng từ nhà phát hành.
+
+### Bộ mẫu và kiểm thử
+
+Chạy từ thư mục backend bằng Python đã cài requirements của scanner:
+
+```powershell
+.venv-ticket-scanner/Scripts/python.exe -m unittest discover -s scripts/ticket-scanner -p test_*.py
+.venv-ticket-scanner/Scripts/python.exe scripts/ticket-scanner/generate_fixtures.py
+```
+
+Generator tạo PDF dạng ảnh trong .tmp/postman-files: ticket.pdf, duplicate-code.pdf (cùng QR, file khác), missing-code.pdf, multiple-codes.pdf và uncertain-price.pdf. Đây là dữ liệu giả lập. Font mặc định Arial trên Windows; máy khác truyền --font đường dẫn font TTF. Postman dùng ticket.pdf; khi thử đối chiếu, chọn sự kiện Demo Concert ngày 20/12/2028 lúc 19:00 giờ Việt Nam, Demo Hall, VIP, ghế A12, giá gốc 500000. Mẫu có thể vẫn needs_review vì độ tin cậy OCR dưới 95.
+
+Để quét mẫu trực tiếp, chạy scan.py --file .tmp/postman-files/ticket.pdf --tesseract đường_dẫn_tesseract với TESSDATA_PREFIX trỏ tới dữ liệu vie+eng. Python không tự tải .env. Không cần khởi động worker hoặc tạo vé trong database để kiểm thử scanner.

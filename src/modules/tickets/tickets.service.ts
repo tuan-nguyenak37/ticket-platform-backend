@@ -267,11 +267,12 @@ export class TicketsService {
     files: TicketUploadFiles = {},
   ) {
     if (files.ticketFile?.length !== 1) {
-      throw new BadRequestException(
-        'One ticket file (PDF or image) is required',
-      );
+      throw new BadRequestException('One PDF ticket file is required');
     }
     const uploadedFile = files.ticketFile[0];
+    if (uploadedFile.mimetype !== 'application/pdf') {
+      throw new BadRequestException('Ticket files must be PDF');
+    }
     this.uploads.validate(uploadedFile, false);
 
     const savedFiles: string[] = [];

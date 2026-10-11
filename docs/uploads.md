@@ -46,3 +46,6 @@ file khi thao tác liên kết thất bại hoặc file được thay thế.
   Xem [kiểm tra vé](./ticket-review-automation.md) và [Orders](./orders-api.md).
 
 Lượt đối chiếu tài liệu ngày 07/10/2026 không khởi động server hoặc kết nối database.
+
+
+Riêng POST /api/tickets chỉ nhận một file PDF (application/pdf), kiểm tra chữ ký nội dung; ảnh chỉ còn hỗ trợ cho vé lịch sử. Quy định ảnh banner sự kiện không thay đổi.

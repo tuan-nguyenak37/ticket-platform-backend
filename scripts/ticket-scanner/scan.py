@@ -20,7 +20,17 @@ class ScanError(Exception):
 
 
 def normalize(text):
-    return unicodedata.normalize('NFC', text).strip().casefold()
+    return ' '.join(unicodedata.normalize('NFC', text).split()).casefold()
+
+
+def parse_price(value):
+    value = re.sub(r'\s*(?:VND|VNĐ|đ|₫)\s*$', '', value, flags=re.IGNORECASE).strip()
+    if re.fullmatch(r'\d+', value):
+        return str(int(value))
+    # Accept consistent thousands separators, never guess decimal currencies.
+    if re.fullmatch(r'\d{1,3}([., ])\d{3}(?:\1\d{3})*', value):
+        return str(int(re.sub(r'[., ]', '', value)))
+    return None
 
 
 def images(path):
@@ -98,40 +108,44 @@ def extract(lines):
         'ticketTier': r'(?:hạng vé|loại vé|ticket tier|ticket type|tier)',
         'seat': r'(?:ghế|số ghế|seat|seat number)',
         'originalPrice': r'(?:giá vé|giá gốc|mệnh giá|ticket price|face value)',
+        'date': r'(?:ngày diễn ra|ngày tổ chức|event date|date)',
+        'time': r'(?:giờ bắt đầu|giờ diễn ra|start time|event time)',
     }
     fields = {}
     for field in ['eventName', 'date', 'time', 'venue', 'ticketTier', 'seat', 'originalPrice']:
         candidates = []
+        evidence = []
+        invalid = False
         for line in lines:
-            text = line['text']
-            value = None
-            if field in aliases:
-                match = re.fullmatch(r'\s*' + aliases[field] + r'\s*[:：]\s*(.+?)\s*', text, re.IGNORECASE)
-                if match:
-                    value = match.group(1)
-                    if field == 'originalPrice':
-                        price = re.fullmatch(r'\s*(\d+(?:[.,]\d{3})*)(?:\s*(?:VND|VNĐ|đ|₫))?\s*', value, re.IGNORECASE)
-                        value = str(int(re.sub(r'[.,]', '', price.group(1)))) if price else None
+            text = ' '.join(unicodedata.normalize('NFC', line['text']).split())
+            match = re.fullmatch(aliases[field] + r'\s*[:：]\s*(.*?)', text, re.IGNORECASE)
+            if not match:
+                continue
+            evidence.append(line)
+            value = match.group(1) or None
+            if field == 'originalPrice':
+                value = parse_price(value or '')
             elif field == 'date':
-                match = re.search(r'(?<!\d)(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?!\d)', text)
-                # Require an explicit event date label; order/payment dates are not event dates.
-                if match and re.search(r'^\s*(?:ngày diễn ra|ngày tổ chức|event date|date)\s*[:：]', text, re.IGNORECASE):
-                    from datetime import date
+                from datetime import date
+                match = re.fullmatch(r'(\d{1,2})\s*([/.-])\s*(\d{1,2})\s*\2\s*(\d{4})', value or '')
+                value = None
+                if match:
                     try:
-                        parsed = date(int(match[3]), int(match[2]), int(match[1]))
-                        value = parsed.strftime('%d/%m/%Y')
+                        value = date(int(match[4]), int(match[3]), int(match[1])).strftime('%d/%m/%Y')
                     except ValueError:
                         pass
             elif field == 'time':
-                match = re.search(r'(?<!\d)(\d{1,2}):([0-5]\d)(?!\d)', text)
-                if match and int(match[1]) < 24 and re.search(r'^\s*(?:giờ bắt đầu|giờ diễn ra|start time|event time)\s*[:：]', text, re.IGNORECASE):
-                    value = f'{int(match[1]):02d}:{match[2]}'
+                match = re.fullmatch(r'(\d{1,2})\s*[:hH]\s*([0-5]\d)', value or '')
+                value = f'{int(match[1]):02d}:{match[2]}' if match and int(match[1]) < 24 else None
             if value:
                 candidates.append((value, line))
+            else:
+                invalid = True
         unique = {normalize(value) for value, _ in candidates}
-        fields[field] = {'value': candidates[0][0] if len(unique) == 1 else None,
-                         'confidence': min((line['confidence'] for _, line in candidates), default=0) if len(unique) == 1 else 0,
-                         'evidence': [line for _, line in candidates][:5]}
+        certain = len(unique) == 1 and not invalid
+        fields[field] = {'value': candidates[0][0] if certain else None,
+                         'confidence': min((line['confidence'] for _, line in candidates), default=0) if certain else 0,
+                         'evidence': evidence[:5]}
     return fields
 
 
@@ -166,7 +180,7 @@ def main():
             image.close()
     from importlib.metadata import version
     return {'fields': extract(lines), 'codes': codes,
-            'engineVersion': f'local-ticket-v1;Pillow={PIL.__version__};pdfium={version("pypdfium2")};zxing={version("zxing-cpp")}'}
+            'engineVersion': f'local-ticket-v2;Pillow={PIL.__version__};pdfium={version("pypdfium2")};zxing={version("zxing-cpp")}'}
 
 
 if __name__ == '__main__':
