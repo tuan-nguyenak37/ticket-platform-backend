@@ -1,5 +1,16 @@
 # Trạng thái kiểm chứng và bàn giao
 
+## Sửa test và xác minh PostgreSQL/OCR — 11/10/2026
+
+- Đã sửa 8 lỗi kiểu dữ liệu test: AuthorizedRequest cho refresh, callback generic của OrderStore.locked và reason của ReviewTicketDto.
+- `npx tsc --noEmit --incremental false` và `npm run build`: đạt.
+- Jest mặc định: 217 test đạt, 15 test tích hợp bỏ qua nếu chưa bật cờ.
+- Chạy PostgreSQL/OCR có bật cờ: 15/15 đạt. Bao gồm hai thanh toán đồng thời chỉ phân bổ một vé, hoàn tiền bên còn lại, rollback/idempotency, guard HTTP Orders và PDF thật → OCR → duyệt thủ công → thanh toán → nhận đúng bytes file gốc.
+- Schema test có tên ngẫu nhiên, áp dụng SQL Orders và Ticket review trong schema đó; không chạy worker lên hàng chờ thật. Tự duyệt vẫn tắt.
+- Lần đầu test OCR thiếu TESSDATA_PREFIX trong môi trường tiến trình con; đã chạy lại thành công khi nạp trước Jest. Lệnh `npm run test:purchase-flow` chuẩn bị môi trường và PDF mẫu để tái lập.
+- Đã cập nhật collection Tickets/Orders trên Postman workspace nesjs; chưa chạy Collection Runner ở workspace. Script của 42 request local đã kiểm tra cú pháp.
+- Các mục lỗi TypeScript/chưa kiểm chứng phía dưới là lịch sử trước lần sửa này.
+
 ## Kiểm tra trước commit bộ test — 11/10/2026
 
 - `npm test -- --runInBand`: 22 suites đạt, 1 suite bỏ qua; 217 tests đạt, 14 tests bỏ qua. Suite PostgreSQL cần bật `ORDERS_PG_TEST`; lượt này không chạy kiểm thử database hoặc E2E.

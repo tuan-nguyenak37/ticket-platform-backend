@@ -56,10 +56,12 @@ describe('OrdersService', () => {
 
   beforeEach(async () => {
     configService = {
-      get: jest.fn().mockImplementation((key: string, defaultValue: unknown) => {
-        if (key === 'ORDER_PAYMENT_TIMEOUT_MINUTES') return 15;
-        return defaultValue;
-      }),
+      get: jest
+        .fn()
+        .mockImplementation((key: string, defaultValue: unknown) => {
+          if (key === 'ORDER_PAYMENT_TIMEOUT_MINUTES') return 15;
+          return defaultValue;
+        }),
     };
 
     uploadsService = {
@@ -266,7 +268,10 @@ describe('OrdersService', () => {
         now: new Date('2026-03-01T10:02:00Z'),
       };
 
-      orderStore.locked = jest.fn((id, work) => work(context));
+      orderStore.locked = <T>(
+        _id: string,
+        work: (locked: LockedOrder) => Promise<T>,
+      ): Promise<T> => work(context);
 
       const result = await service.cancel(mockBuyerPrincipal, 'ord_mock_001');
       expect(order.status).toBe(OrderStatus.CANCELLED);
@@ -287,7 +292,10 @@ describe('OrdersService', () => {
         now: new Date('2026-03-01T10:02:00Z'),
       };
 
-      orderStore.locked = jest.fn((id, work) => work(context));
+      orderStore.locked = <T>(
+        _id: string,
+        work: (locked: LockedOrder) => Promise<T>,
+      ): Promise<T> => work(context);
 
       await expect(
         service.cancel(mockBuyerPrincipal, 'ord_paid_002'),
@@ -312,14 +320,13 @@ describe('OrdersService', () => {
         now: new Date('2026-03-01T10:02:00Z'),
       };
 
-      orderStore.locked = jest.fn((id, work) => work(context));
+      orderStore.locked = <T>(
+        _id: string,
+        work: (locked: LockedOrder) => Promise<T>,
+      ): Promise<T> => work(context);
 
       await expect(
-        service.dispute(
-          mockBuyerPrincipal,
-          'ord_mock_001',
-          mockOpenDisputeDto,
-        ),
+        service.dispute(mockBuyerPrincipal, 'ord_mock_001', mockOpenDisputeDto),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -344,14 +351,13 @@ describe('OrdersService', () => {
         now: new Date('2026-03-10T00:00:00Z'), // Past disputeUntil and event.endTime + 86400000!
       };
 
-      orderStore.locked = jest.fn((id, work) => work(context));
+      orderStore.locked = <T>(
+        _id: string,
+        work: (locked: LockedOrder) => Promise<T>,
+      ): Promise<T> => work(context);
 
       await expect(
-        service.dispute(
-          mockBuyerPrincipal,
-          'ord_paid_002',
-          mockOpenDisputeDto,
-        ),
+        service.dispute(mockBuyerPrincipal, 'ord_paid_002', mockOpenDisputeDto),
       ).rejects.toThrow(ConflictException);
     });
   });

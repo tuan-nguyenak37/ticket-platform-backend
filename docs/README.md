@@ -36,7 +36,7 @@ published chưa kết thúc xuất hiện công khai. Tự duyệt mặc định
 | [Collection Tickets](./postman/tickets.postman_collection.json) | Đăng, tìm kiếm, hủy, kiểm duyệt và xem vé tôi đăng |
 | [Postman local](./postman/local-setup.md) | Cấu hình environment và cách dùng các collection |
 | [Hướng dẫn kiểm thử từng Module](./module-testing-guide.md) | Tài liệu hướng dẫn chi tiết cách chạy Unit, E2E và Postman cho từng module |
-| [Báo cáo kết quả kiểm thử hệ thống](./software-test-report.md) | Báo cáo lịch sử và cập nhật kiểm chứng 11/10: 217 test đạt, 14 test bỏ qua; còn lỗi TypeScript trong test |
+| [Báo cáo kết quả kiểm thử hệ thống](./software-test-report.md) | Báo cáo lịch sử; hiện đạt 217 test thường và 15 test PostgreSQL/OCR chạy riêng, TypeScript đã sạch |
 | [Đặc tả kiểm thử Auth](./test-cases/auth-module-test-specification.md) | Kịch bản kiểm thử đăng ký, đăng nhập, cookie và phân quyền |
 | [Đặc tả kiểm thử Users](./test-cases/user-module-test-specification.md) | Kịch bản và dữ liệu kiểm thử tài khoản |
 | [Đặc tả kiểm thử Events](./test-cases/events-module-test-specification.md) | Kịch bản quản lý sự kiện và ghim |

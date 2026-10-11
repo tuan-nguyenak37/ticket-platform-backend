@@ -20,7 +20,8 @@
     "test:cov": "npm test -- --coverage",
     "test:debug": "node --experimental-vm-modules --inspect-brk node_modules/jest/bin/jest.js --runInBand",
     "test:e2e": "npm test -- --config ./test/jest-e2e.json",
-    "seed": "ts-node -r tsconfig-paths/register src/database/seeds/run-seed.ts"
+    "seed": "ts-node -r tsconfig-paths/register src/database/seeds/run-seed.ts",
+    "test:purchase-flow": "node scripts/test-purchase-flow.cjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

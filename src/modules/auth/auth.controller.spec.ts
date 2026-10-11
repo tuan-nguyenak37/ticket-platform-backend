@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import type { Request, Response } from 'express';
+import type { Response } from 'express';
+import type { AuthorizedRequest } from './authorization/principal';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { REFRESH_COOKIE } from './refresh-cookie';
@@ -87,7 +88,7 @@ describe('AuthController', () => {
         cookies: {
           [REFRESH_COOKIE]: 'existing.refresh.cookie.token',
         },
-      } as unknown as Request;
+      } as unknown as AuthorizedRequest;
 
       const mockRes = {
         cookie: jest.fn((name, val) => {
@@ -106,7 +107,7 @@ describe('AuthController', () => {
     });
 
     it('handles missing cookie gracefully by passing empty string', async () => {
-      const mockReq = { cookies: {} } as unknown as Request;
+      const mockReq = { cookies: {} } as unknown as AuthorizedRequest;
       const mockRes = { cookie: jest.fn() } as unknown as Response;
 
       await controller.refresh(mockReq, mockRes);

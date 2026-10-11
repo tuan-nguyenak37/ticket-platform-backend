@@ -1,5 +1,36 @@
 # Postman local Backend
 
+## Cập nhật ngày 11/10/2026
+
+Đã import `Backend - Orders` (22 request) và thay bản `Backend - Tickets` (20 request)
+trong workspace `nesjs`. Collection chỉ chứa biến token trống; không đồng bộ credential.
+Các số request/trạng thái chưa đồng bộ ở phần lịch sử bên dưới thuộc lượt trước.
+
+- Tickets chỉ nhận PDF. Mẫu `ticket.pdf` khớp Demo Concert, 20/12/2028 lúc 19:00 giờ Việt Nam,
+  Demo Hall, VIP, A12, giá gốc 500000 VNĐ; giá bán lại mẫu là 400000 VNĐ.
+- Chọn `eventId` đúng sự kiện trong PDF. List events không tự ghi đè eventId nữa.
+  Create lưu `ticketId`, `reviewTicketId`, `myTicketId`; danh sách hàng chờ không tự đổi vé đang duyệt.
+- Chờ worker xử lý xong, đọc Ticket report, xem file/cảnh báo rồi Approve bằng tài khoản quản trị khác người bán.
+  Sau đó dùng ticketId trong Orders. Không chạy Cancel hoặc Reject trên vé dùng cho luồng mua.
+- Orders: đặt `buyerToken`, `sellerToken`, `managerToken` từ các tài khoản tương ứng.
+  Các request có kiểm tra HTTP status; token phải còn hạn.
+- Folder `Race - Two buyers, one ticket (test data only)` dùng một vé PDF mới đã duyệt qua `raceTicketId`,
+  `buyerToken` và `buyer2Token` của hai người khác nhau, `managerToken` của quản trị không thuộc hai bên.
+  Chọn environment và chạy riêng folder theo thứ tự 1A, 1B, 2A, 2B, 3, 4, 5, 6.
+  Bước 3 gửi hai kết quả success đồng thời bằng `pm.sendRequest`, yêu cầu đúng một paid và một refund_pending.
+  Bước 4 tải PDF cho người thắng; bước 5 phải trả 409 cho người thua; bước 6 hoàn tiền giả lập.
+  Xóa `raceKeyA`, `raceKeyB` trong environment và chọn vé mới khi chạy lại kịch bản mới.
+  Các biến race kết quả/token được lưu trong environment đang chọn; không export/share giá trị credential.
+- Dùng Desktop Agent để truy cập localhost; mock yêu cầu `PAYMENT_MOCK_ENABLED=true` ở development/test.
+  Collection có các nhánh thay thế, không chạy toàn bộ Orders hoặc Tickets như một chuỗi duy nhất.
+
+Kiểm thử tự động độc lập Postman: `npm run test:purchase-flow`. Lệnh tạo mẫu PDF,
+nạp TESSDATA_PREFIX trước khi Jest khởi động và chạy 15 test trên schema PostgreSQL tạm;
+schema được dọn sau test. Cần PostgreSQL local và Python/Tesseract vie+eng trong `.env`.
+Máy ngoài Windows đặt `TICKET_TEST_FONT` tới font TTF khi tạo mẫu.
+Luồng OCR dùng service thật/file thật; test HTTP Orders dùng token guard giả lập.
+Kết quả này không xác nhận đã chạy Collection Runner trên Postman.
+
 Workspace: nesjs. Environment: Backend Local - Events.
 baseUrl: http://localhost:7000 (không thêm /api).
 

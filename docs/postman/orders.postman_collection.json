@@ -2,7 +2,8 @@
   "info": {
     "name": "Backend - Orders",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Local mock only. Read docs/orders-api.md. Cancel/dispute/refund/payout are alternative branches. Clear orderKey for a new checkout; retain it for retries. Tokens must belong to separate buyer, seller and manager accounts."
+    "description": "Local mock only. Read docs/orders-api.md. Cancel/dispute/refund/payout are alternative branches. Clear orderKey for a new checkout; retain it for retries. Tokens must belong to separate buyer, seller and manager accounts. Updated 2026-10-11: response assertions and an explicit concurrent two-buyer test folder. Run either a normal purchase or the race folder on separate tickets.",
+    "_postman_id": "576d46e8-9105-4342-9656-68a157644d07"
   },
   "variable": [
     {
@@ -31,6 +32,38 @@
     },
     {
       "key": "orderKey",
+      "value": ""
+    },
+    {
+      "key": "buyer2Token",
+      "value": ""
+    },
+    {
+      "key": "raceTicketId",
+      "value": ""
+    },
+    {
+      "key": "raceOrderA",
+      "value": ""
+    },
+    {
+      "key": "raceOrderB",
+      "value": ""
+    },
+    {
+      "key": "raceKeyA",
+      "value": ""
+    },
+    {
+      "key": "raceKeyB",
+      "value": ""
+    },
+    {
+      "key": "raceWinnerOrderId",
+      "value": ""
+    },
+    {
+      "key": "raceLoserOrderId",
       "value": ""
     }
   ],
@@ -108,7 +141,18 @@
         },
         "header": [],
         "url": "{{baseUrl}}/api/orders/me?side=buyer&page=1&limit=20"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Order detail",
@@ -126,7 +170,18 @@
         },
         "header": [],
         "url": "{{baseUrl}}/api/orders/me/{{orderId}}"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Cancel unpaid order",
@@ -144,7 +199,18 @@
         },
         "header": [],
         "url": "{{baseUrl}}/api/orders/me/{{orderId}}/cancel"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Start mock payment",
@@ -162,7 +228,18 @@
         },
         "header": [],
         "url": "{{baseUrl}}/api/orders/me/{{orderId}}/payment"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Mock successful payment",
@@ -194,7 +271,19 @@
             }
           }
         }
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "if(pm.response.code===200) pm.test('Paid or refund pending',()=>pm.expect(pm.response.json().data.status).to.be.oneOf(['paid','refund_pending']));"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Download purchased ticket",
@@ -212,7 +301,19 @@
         },
         "header": [],
         "url": "{{baseUrl}}/api/orders/me/{{orderId}}/file"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Private ticket response',()=>pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'));"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Open dispute",
@@ -244,7 +345,18 @@
             }
           }
         }
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Seller dispute reply",
@@ -276,7 +388,18 @@
             }
           }
         }
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Manage orders",
@@ -294,7 +417,18 @@
         },
         "header": [],
         "url": "{{baseUrl}}/api/orders/manage?page=1&limit=20"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Manage order detail",
@@ -312,7 +446,18 @@
         },
         "header": [],
         "url": "{{baseUrl}}/api/orders/manage/{{orderId}}"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Resolve dispute",
@@ -344,7 +489,18 @@
             }
           }
         }
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Mock refund",
@@ -362,7 +518,18 @@
         },
         "header": [],
         "url": "{{baseUrl}}/api/orders/manage/{{orderId}}/refund/mock"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "Mock payout",
@@ -380,7 +547,341 @@
         },
         "header": [],
         "url": "{{baseUrl}}/api/orders/manage/{{orderId}}/payout/mock"
-      }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Race - Two buyers, one ticket (test data only)",
+      "description": "Run this folder only against local development with mock payments enabled. Use a fresh approved PDF ticket in raceTicketId, two distinct buyers and a separate manager. Clear raceKeyA/raceKeyB before a new scenario. Request 3 sends two requests concurrently; sequential Runner requests alone do not test concurrency. Uses no real money. Runtime tokens are stored in the selected environment; do not export/share credential values.",
+      "item": [
+        {
+          "name": "1A - Create order buyer A",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/orders",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{raceKeyA}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticketId\": \"{{raceTicketId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.variables.get('raceTicketId')) throw new Error('Set raceTicketId to a fresh available test ticket');",
+                  "if(!pm.environment.get('raceKeyA')) pm.environment.set('raceKeyA',pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if(pm.response.code===201){ const d=pm.response.json().data; pm.test('Pending without reservation',()=>pm.expect(d.status).to.eql('pending')); pm.environment.set('raceOrderA',d.order_id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1B - Create order buyer B",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/orders",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyer2Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{raceKeyB}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticketId\": \"{{raceTicketId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.variables.get('raceTicketId')) throw new Error('Set raceTicketId to a fresh available test ticket');",
+                  "if(!pm.environment.get('raceKeyB')) pm.environment.set('raceKeyB',pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if(pm.response.code===201){ const d=pm.response.json().data; pm.test('Pending without reservation',()=>pm.expect(d.status).to.eql('pending')); pm.environment.set('raceOrderB',d.order_id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2A - Start mock payment buyer A",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/orders/me/{{raceOrderA}}/payment",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2B - Start mock payment buyer B",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/orders/me/{{raceOrderB}}/payment",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyer2Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3 - Send both successful payments concurrently",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/orders/me/{{raceOrderA}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base=pm.variables.get('baseUrl');",
+                  "const a=pm.variables.get('raceOrderA'), b=pm.variables.get('raceOrderB');",
+                  "const ta=pm.variables.get('buyerToken'), tb=pm.variables.get('buyer2Token');",
+                  "for(const k of ['raceWinnerOrderId','raceLoserOrderId','raceWinnerToken','raceLoserToken']) pm.environment.unset(k);",
+                  "if(!a||!b||a===b||!ta||!tb||ta===tb) throw new Error('Prepare distinct buyer accounts, orders and both payment sessions first');",
+                  "const send=(id,token)=>new Promise((resolve,reject)=>pm.sendRequest({url:base+'/api/orders/me/'+id+'/payment/mock-result',method:'POST',header:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:{mode:'raw',raw:JSON.stringify({result:'success'})}},(err,res)=>{",
+                  " if(err) return reject(err);",
+                  " if(res.code!==200) return reject(new Error('Payment response HTTP '+res.code));",
+                  " resolve({data:res.json().data,token});",
+                  "}));",
+                  "const results=await Promise.all([send(a,ta),send(b,tb)]);",
+                  "pm.test('Exactly one paid and one refund_pending',()=>pm.expect(results.map(r=>r.data.status).sort()).to.eql(['paid','refund_pending']));",
+                  "pm.test('Same ticket, distinct buyers',()=>{pm.expect(results[0].data.ticketId).to.eql(pm.variables.get('raceTicketId'));pm.expect(results[1].data.ticketId).to.eql(pm.variables.get('raceTicketId'));pm.expect(results[0].data.buyerId).not.to.eql(results[1].data.buyerId);});",
+                  "const winner=results.find(r=>r.data.status==='paid'),loser=results.find(r=>r.data.status==='refund_pending');",
+                  "if(!winner||!loser) throw new Error('Unexpected allocation; inspect both orders');",
+                  "pm.environment.set('raceWinnerOrderId',winner.data.order_id);pm.environment.set('raceLoserOrderId',loser.data.order_id);",
+                  "pm.environment.set('raceWinnerToken',winner.token);pm.environment.set('raceLoserToken',loser.token);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4 - Winner downloads PDF",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/orders/me/{{raceWinnerOrderId}}/file",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{raceWinnerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('PDF delivered',()=>pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5 - Loser cannot download",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/orders/me/{{raceLoserOrderId}}/file",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{raceLoserToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6 - Manager refunds loser (mock)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/orders/manage/{{raceLoserOrderId}}/refund/mock",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{managerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if(pm.response.code===200) pm.test('Refunded',()=>pm.expect(pm.response.json().data.status).to.eql('refunded'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -117,7 +117,7 @@ describe('TicketReviewService', () => {
       await expect(
         service.review(mockAdmin, 'tkt_001', {
           decision: 'reject',
-          rejectionReason: 'Invalid image',
+          reason: 'Invalid image',
         }),
       ).rejects.toThrow(ForbiddenException);
     });
@@ -147,7 +147,7 @@ describe('TicketReviewService', () => {
       await expect(
         service.review(mockAdmin, 'tkt_001', {
           decision: 'reject',
-          rejectionReason: 'Too late',
+          reason: 'Too late',
         }),
       ).rejects.toThrow(ConflictException);
     });

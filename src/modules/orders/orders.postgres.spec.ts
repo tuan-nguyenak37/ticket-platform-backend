@@ -36,6 +36,16 @@ import { AuditService } from '../auth/authorization/audit.service';
 import { TokenService } from '../auth/jwt/token.service';
 import { UsersService } from '../users/users.service';
 import { configureApp } from '../../configure-app';
+import { join } from 'path';
+import { Readable } from 'stream';
+import { TicketsService } from '../tickets/tickets.service';
+import { TicketCheck } from '../tickets/entities/ticket-check.entity';
+import { TicketReview } from '../tickets/entities/ticket-review.entity';
+import { LocalTicketScanner } from '../tickets/review/local-ticket-scanner.service';
+import { TicketCheckWorker } from '../tickets/review/ticket-check-worker.service';
+import { TicketReportService } from '../tickets/review/ticket-report.service';
+import { TicketReviewService } from '../tickets/review/ticket-review.service';
+import { CheckStatus } from '../tickets/review/check.types';
 
 // Explicit opt-in. Only a newly-created random schema is written or dropped.
 const suite = process.env.ORDERS_PG_TEST === '1' ? describe : describe.skip;
@@ -103,6 +113,8 @@ suite('Orders with real PostgreSQL transactions', () => {
         EventCategory,
         Event,
         Ticket,
+        TicketCheck,
+        TicketReview,
         Order,
         OrderPayment,
         OrderDispute,
@@ -116,6 +128,9 @@ suite('Orders with real PostgreSQL transactions', () => {
       const sql = readFileSync('docs/orders-schema.sql', 'utf8');
       await runner.query(sql);
       await runner.query(sql);
+      await runner.query(
+        readFileSync('docs/ticket-review-automation.sql', 'utf8'),
+      );
     } finally {
       await runner.release();
     }
@@ -222,6 +237,141 @@ suite('Orders with real PostgreSQL transactions', () => {
     await payments.start(actor, order.order_id);
     return order.order_id;
   }
+
+  (process.env.TICKET_OCR_TEST === '1' ? it : it.skip)(
+    'uploads a PDF, runs real OCR, approves it and delivers the original file after payment',
+    async () => {
+      const env = parse(readFileSync('.env'));
+      const config = new ConfigService({
+        ...env,
+        NODE_ENV: 'test',
+        PAYMENT_MOCK_ENABLED: true,
+        TICKET_AUTO_APPROVE_ENABLED: false,
+        TICKET_CODE_HMAC_SECRET: randomUUID() + randomUUID(),
+        UPLOAD_DIR: join('.tmp', schema),
+      });
+      const previousTessdata = process.env.TESSDATA_PREFIX;
+      if (env.TESSDATA_PREFIX)
+        process.env.TESSDATA_PREFIX = env.TESSDATA_PREFIX;
+      const uploads = new UploadsService(config);
+      const reports = new TicketReportService(config);
+      const reviews = new TicketReviewService(db, config, reports);
+      const worker = new TicketCheckWorker(
+        db,
+        config,
+        new LocalTicketScanner(config),
+        uploads,
+        reports,
+        reviews,
+      );
+      let filename: string | null = null;
+      try {
+        await db.getRepository(Event).update(event.event_id, {
+          name: 'Demo Concert',
+          venueName: 'Demo Hall',
+          startTime: new Date('2028-12-20T12:00:00Z'),
+          endTime: new Date('2028-12-20T15:00:00Z'),
+        });
+        const buffer = readFileSync('.tmp/postman-files/ticket.pdf');
+        const created = await new TicketsService(db, uploads).create(
+          seller,
+          {
+            eventId: event.event_id,
+            ticketTier: 'VIP',
+            seatInfo: 'A12',
+            originalPrice: 500000,
+            price: 400000,
+          },
+          {
+            ticketFile: [
+              {
+                fieldname: 'ticketFile',
+                originalname: 'ticket.pdf',
+                mimetype: 'application/pdf',
+                encoding: '7bit',
+                buffer,
+                size: buffer.length,
+                stream: Readable.from(buffer),
+                destination: '',
+                filename: '',
+                path: '',
+              },
+            ],
+          },
+        );
+        const stored = await db
+          .getRepository(Ticket)
+          .findOneByOrFail({ ticket_id: created.ticket_id });
+        filename = new URL(
+          stored.ticketFileUrl,
+          'http://local',
+        ).searchParams.get('file');
+        expect(created.status).toBe(TicketStatus.PENDING_REVIEW);
+        await worker.start();
+        const deadline = Date.now() + 45000;
+        let check: TicketCheck;
+        do {
+          check = await db
+            .getRepository(TicketCheck)
+            .findOneByOrFail({ ticketId: created.ticket_id });
+          if (
+            [CheckStatus.COMPLETED, CheckStatus.FAILED].includes(check.status)
+          )
+            break;
+          await new Promise<void>((resolve) => setTimeout(resolve, 250));
+        } while (Date.now() < deadline);
+        expect({ status: check.status, error: check.errorCode }).toEqual({
+          status: CheckStatus.COMPLETED,
+          error: null,
+        });
+        expect(check.scan?.codes).toHaveLength(1);
+        expect(check.scan?.fields.originalPrice.value).toBe('500000');
+        expect(
+          (
+            await db
+              .getRepository(Ticket)
+              .findOneByOrFail({ ticket_id: created.ticket_id })
+          ).status,
+        ).toBe(TicketStatus.PENDING_REVIEW);
+        await reviews.review(admin, created.ticket_id, {
+          decision: 'approve',
+          checkVersion: check.version,
+          selectedCodeId: check.scan!.codes[0].id,
+          note: 'Reviewed synthetic PDF and OCR warnings in isolated integration test.',
+        });
+        const realOrders = new OrdersService(store, config, uploads);
+        const realPayments = new OrderPaymentsService(
+          store,
+          realOrders,
+          config,
+        );
+        const order = await realOrders.create(
+          buyer,
+          { ticketId: created.ticket_id },
+          randomUUID(),
+        );
+        await realPayments.start(buyer, order.order_id);
+        expect(
+          (await realPayments.result(buyer, order.order_id, 'success')).status,
+        ).toBe(OrderStatus.PAID);
+        const delivered = await realOrders.file(buyer, order.order_id);
+        expect(delivered.buffer).toEqual(buffer);
+        expect(delivered.mimetype).toBe('application/pdf');
+        expect(
+          (
+            await db
+              .getRepository(Order)
+              .findOneByOrFail({ order_id: order.order_id })
+          ).status,
+        ).toBe(OrderStatus.DELIVERED);
+      } finally {
+        await worker.onApplicationShutdown();
+        if (filename) await uploads.removeTicketFile(filename);
+        if (previousTessdata === undefined) delete process.env.TESSDATA_PREFIX;
+        else process.env.TESSDATA_PREFIX = previousTessdata;
+      }
+    },
+  );
 
   it('two successful payments allocate exactly one ticket and refund the loser', async () => {
     const a = await pending(buyer);

@@ -1,8 +1,9 @@
 {
   "info": {
     "name": "Backend - Tickets",
-    "description": "Collection kiểm thử API Quản lý Vé (Tickets) trên sàn pass vé TicketVerse. Sử dụng environment Backend Local - Events với baseUrl=http://localhost:7000 (không thêm /api).",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "description": "Collection kiểm thử API Quản lý Vé (Tickets) trên sàn pass vé TicketVerse. Sử dụng environment Backend Local - Events với baseUrl=http://localhost:7000 (không thêm /api). New uploads must be PDF. Create stores reviewTicketId; choose eventId explicitly. OCR warnings need manual review; automatic approval stays disabled. Updated 2026-10-11.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "0ac7acad-5f6a-44b1-81eb-51082c7fac0e"
   },
   "item": [
     {
@@ -81,13 +82,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
-                  "if (pm.response.code === 200) {",
-                  "  const items = pm.response.json().data?.items;",
-                  "  if (Array.isArray(items) && items.length > 0) {",
-                  "    pm.environment.set(\"eventId\", items[0].event_id);",
-                  "  }",
-                  "}"
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
                 ]
               }
             }
@@ -113,7 +108,8 @@
                   "value": "5"
                 }
               ]
-            }
+            },
+            "description": "Choose eventId yourself from the response; do not automatically select an unrelated event for OCR comparison."
           }
         }
       ]
@@ -135,6 +131,8 @@
                   "  pm.test(\"Status is pending_review\", () => pm.expect(d.status).to.eql(\"pending_review\"));",
                   "  pm.test(\"Ticket ID generated\", () => pm.expect(d.ticket_id).to.match(/^ticket_/));",
                   "  pm.environment.set(\"ticketId\", d.ticket_id);",
+                  "  pm.environment.set(\"reviewTicketId\", d.ticket_id);",
+                  "  pm.environment.set(\"myTicketId\", d.ticket_id);",
                   "}"
                 ]
               }
@@ -163,22 +161,22 @@
                 },
                 {
                   "key": "ticketTier",
-                  "value": "VIP Khán đài A",
+                  "value": "VIP",
                   "type": "text"
                 },
                 {
                   "key": "seatInfo",
-                  "value": "Dãy C - Ghế 15",
+                  "value": "A12",
                   "type": "text"
                 },
                 {
                   "key": "originalPrice",
-                  "value": "1500000",
+                  "value": "500000",
                   "type": "text"
                 },
                 {
                   "key": "price",
-                  "value": "1200000",
+                  "value": "400000",
                   "type": "text"
                 },
                 {
@@ -202,7 +200,8 @@
                 "api",
                 "tickets"
               ]
-            }
+            },
+            "description": "PDF only. Synthetic ticket.pdf: Demo Concert, 20/12/2028 19:00 Asia/Ho_Chi_Minh, Demo Hall, VIP, A12, originalPrice 500000 VND. Select the matching eventId deliberately. price is the resale price."
           }
         }
       ]
@@ -529,7 +528,7 @@
               ]
             },
             "header": [],
-            "description": "Luồng quản trị vé; chưa chạy request tự động."
+            "description": "Inspect queue; reviewTicketId stays on the ticket you created or explicitly selected."
           },
           "event": [
             {
@@ -537,10 +536,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 200) {",
-                  "  const item = pm.response.json().data.items?.[0];",
-                  "  if (item) pm.environment.set('reviewTicketId', item.ticket_id);",
-                  "}"
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
                 ]
               }
             }
@@ -653,7 +649,19 @@
               }
             },
             "description": "Chọn vé pending của người khác có check completed và mã đọc được. Lấy version/code từ Ticket report. Với nhiều mã chọn selectedCodeId thủ công. Approve và Reject là lựa chọn thay thế, không chạy cả hai trên cùng vé."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "if(pm.response.code===200){pm.test('Available after review',()=>pm.expect(pm.response.json().data.status).to.eql('available'));pm.environment.set('ticketId',pm.response.json().data.ticket_id);}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Review - Reject ticket",

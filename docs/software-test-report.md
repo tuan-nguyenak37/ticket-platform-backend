@@ -1,5 +1,7 @@
 # BÁO CÁO KẾT QUẢ KIỂM THỬ HỆ THỐNG BACKEND
 
+> Kết quả mới sau sửa ngày 11/10/2026: TypeScript toàn dự án và build đã đạt; Jest thường 217 test đạt; bộ PostgreSQL/OCR chạy riêng 15/15 đạt, gồm kiểm thử hai thanh toán đồng thời và file PDF thật qua OCR, duyệt, mua và bàn giao. Các lỗi TypeScript trong ghi chú trước đã được sửa. Xem `verification-status.md` và `postman/local-setup.md` để tái lập; chưa chạy Postman Collection Runner.
+
 > Cập nhật kiểm chứng 11/10/2026: `npm test -- --runInBand` đạt 22 suites / 217 tests; bỏ qua 1 suite / 14 tests PostgreSQL vì chưa bật `ORDERS_PG_TEST`. `npx tsc --noEmit --incremental false` còn lỗi kiểu dữ liệu tại test Auth controller, Orders service và Ticket review service. Các số liệu và nhận định nghiệm thu ngày 07/10 bên dưới là nội dung báo cáo lịch sử, không xác nhận trạng thái hiện tại hoặc kết quả kiểm thử database, E2E và tải thực tế.
 
 ## HỆ THỐNG SÀN GIAO DỊCH VÉ SỰ KIỆN TRỰC TUYẾN (TICKET RESELL PLATFORM)
