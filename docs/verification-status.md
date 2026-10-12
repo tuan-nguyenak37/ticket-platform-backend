@@ -1,5 +1,14 @@
 # Trạng thái kiểm chứng và bàn giao
 
+## Bổ sung quyền MODERATOR — 12/10/2026
+
+- MODERATOR được suspend/ban/unlock USER qua `PATCH /api/users/:id/status`.
+  Không được tác động ADMIN, MODERATOR hoặc chính mình. ADMIN vẫn quản lý trạng
+  thái USER/MODERATOR. Thu hồi token và yêu cầu lý do giữ nguyên.
+- Đã cập nhật code, docs, collection Postman local và kỳ vọng HTTP cũ cho quyền mới.
+  Không chạy test, build hoặc lint theo yêu cầu. Kết quả kiểm thử bên dưới là của
+  phiên bản trước thay đổi quyền này, không xác nhận phiên bản hiện tại.
+
 ## Khóa tài khoản và upload bằng chứng — 12/10/2026
 
 - ADMIN đổi trạng thái USER/MODERATOR, lý do bắt buộc, tăng tokenVersion nguyên tử;

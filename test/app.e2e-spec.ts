@@ -268,7 +268,7 @@ describe('Application HTTP flows (repository in memory)', () => {
     expect(res.body).not.toHaveProperty('data.statusReason');
   });
 
-  it('restricts status changes to admin and validates status, reason and injected fields', async () => {
+  it('allows moderator status changes for users and validates status, reason and injected fields', async () => {
     const user = await register();
     const regular = await login();
     const admin = await adminLogin();
@@ -287,7 +287,7 @@ describe('Application HTTP flows (repository in memory)', () => {
       .patch(path)
       .auth(moderator.accessToken, { type: 'bearer' })
       .send(body)
-      .expect(403);
+      .expect(200);
     for (const invalid of [
       { ...body, status: 'deleted' },
       { ...body, reason: '  ' },

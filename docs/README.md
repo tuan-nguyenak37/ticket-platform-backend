@@ -63,7 +63,7 @@ published chưa kết thúc xuất hiện công khai. Tự duyệt mặc định
 - `PATCH /api/users/:id` chỉ cho ADMIN sửa `fullName`; không còn nhận email hoặc password.
 - `DELETE /api/users/:id` đã bỏ.
 - Đổi mật khẩu qua `PATCH /api/users/me/password`, sau đó đăng nhập lại.
-- MODERATOR chưa có quyền quản lý người khác.
+- MODERATOR được khóa/ban/mở khóa USER qua `PATCH /api/users/:id/status`; không quản lý trạng thái MODERATOR hoặc ADMIN.
 - Module vé đã có đăng vé, danh sách công khai, vé tôi đăng, hủy đăng bán và API kiểm duyệt cho ADMIN/MODERATOR. Không tự duyệt vé mình đăng.
 - `/api/tickets/me` là vé đã đăng bán. Xem đơn mua qua `/api/orders/me?side=buyer`;
   nhận file vé đã mua qua `/api/orders/me/:id/file`.

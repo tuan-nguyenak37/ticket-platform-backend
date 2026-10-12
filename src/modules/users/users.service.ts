@@ -99,11 +99,21 @@ export class UsersService {
   }
 
   async updateStatus(actor: Principal, id: string, dto: UpdateUserStatusDto) {
-    assertUserAdministrator(actor);
-    const user = await this.requireUser(id);
-    if (id === actor.user_id || user.role === UserRole.ADMIN)
+    if (
+      actor.status !== UserStatus.ACTIVE ||
+      ![UserRole.ADMIN, UserRole.MODERATOR].includes(actor.role)
+    )
       throw new ForbiddenException(
-        'Cannot change an administrator account status',
+        'Only administrators and moderators can change account status',
+      );
+    const user = await this.requireUser(id);
+    if (
+      id === actor.user_id ||
+      user.role === UserRole.ADMIN ||
+      (actor.role === UserRole.MODERATOR && user.role !== UserRole.USER)
+    )
+      throw new ForbiddenException(
+        'Cannot change the status of this account',
       );
     if (user.status === dto.status) return this.managedUser(user);
     const result = await this.userRepository.update(
@@ -126,7 +136,7 @@ export class UsersService {
       throw new ConflictException(
         'Account changed concurrently; reload and retry',
       );
-    return this.findOne(actor, id);
+    return this.managedUser(await this.requireUser(id));
   }
 
   async updateProfile(actor: Principal, dto: UpdateUserDto) {

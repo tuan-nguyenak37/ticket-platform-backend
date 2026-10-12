@@ -9,11 +9,11 @@ Ba role: USER, MODERATOR, ADMIN.
 - USER và MODERATOR được quản lý hồ sơ của chính mình.
 - `GET /api/event-categories` là public: khách và mọi role đều xem được danh sách category đang hoạt động; không cấp quyền tạo/sửa/xóa category.
 - ADMIN có thêm quyền tạo, xem danh sách, xem chi tiết và sửa tên user.
-- MODERATOR và ADMIN được tạo, xem quản lý, sửa và xóa mọi sự kiện, kể cả do người khác tạo và sự kiện published. MODERATOR không được quản lý user/category.
+- MODERATOR và ADMIN được tạo, xem quản lý, sửa và xóa mọi sự kiện, kể cả do người khác tạo và sự kiện published. MODERATOR được đổi trạng thái USER qua API riêng, không được tạo/sửa hồ sơ user hoặc quản lý category.
 - Mọi tài khoản active được đăng vé, xem vé mình đăng và hủy vé mình ở trạng thái pending_review/rejected/available. ADMIN/MODERATOR không vượt quyền sở hữu ở các API này.
 - ADMIN/MODERATOR được xem hàng chờ, báo cáo, file vé, yêu cầu kiểm tra và quyết định duyệt/từ chối; không tự duyệt hoặc từ chối vé mình đăng.
 - ADMIN/MODERATOR được ghim/bỏ ghim qua PATCH /api/events/:id/pin; GET /api/events/pinned là public và chỉ trả tối đa 4 sự kiện ghim còn hiệu lực.
-- ADMIN khóa/mở khóa USER hoặc MODERATOR qua `PATCH /api/users/:id/status`, bắt buộc lý do; không tác động ADMIN. Không có API đổi role hoặc xóa tài khoản.
+- ADMIN khóa/mở khóa USER hoặc MODERATOR; MODERATOR chỉ khóa/mở khóa USER qua `PATCH /api/users/:id/status`, bắt buộc lý do. Không tác động ADMIN hoặc chính mình. Không có API đổi role hoặc xóa tài khoản.
 - Buyer/seller upload bằng chứng khi tranh chấp mở; hai bên và ADMIN/MODERATOR được tải file qua API xác thực. Xem [hợp đồng chi tiết](./account-moderation-dispute-evidence.md).
 - Chính sách nằm trong code; chưa có bảng permission hoặc giao diện quản trị quyền.
 

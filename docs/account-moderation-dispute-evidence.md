@@ -13,17 +13,20 @@ create these columns automatically. No new environment variables are required.
 
 ## Lock and unlock accounts
 
-`PATCH /api/users/:id/status`, ADMIN only:
+`PATCH /api/users/:id/status`, ADMIN or MODERATOR:
 
 ```json
 { "status": "suspended", "reason": "Fraud report under review" }
 ```
 
 - `suspended`: locked pending manual review; no automatic expiration.
-- `banned`: locked for a confirmed violation; an ADMIN can still unlock it.
+- `banned`: locked for a confirmed violation; an authorized manager can unlock it.
 - `active`: unlock. A non-blank reason is required for all changes (1-1000 chars).
-- Only USER and MODERATOR targets can be changed. ADMIN targets, including self,
-  return 403. Deleted/missing users return 404. This is not a role-management API.
+- ADMIN may change USER and MODERATOR targets. MODERATOR may only change USER
+  targets (suspend, ban or unlock). Self, ADMIN targets and MODERATOR-to-MODERATOR
+  changes return 403. Deleted/missing users return 404. This is not a role-management API.
+- User list/detail, creating users and editing their profiles remain ADMIN-only.
+  MODERATOR receives the updated user and moderation metadata from this status API.
 - A successful change atomically increments `tokenVersion` and records
   `statusReason`, `statusChangedBy`, `statusChangedAt`. Login, access and refresh
   reject locked users. Unlock does not revive old tokens; sign in again.
@@ -102,7 +105,7 @@ No new email is sent solely for file uploads.
 
 ## Postman and verification
 
-- Import `postman/users-moderation.postman_collection.json` for admin actions.
+- Import `postman/users-moderation.postman_collection.json` for admin/moderator actions.
 - Orders collection: manual evidence folder, run after opening a dispute and
   before resolving it. Set separate buyer/seller/manager tokens and choose a
   local file. Do not run all alternative workflow branches sequentially.

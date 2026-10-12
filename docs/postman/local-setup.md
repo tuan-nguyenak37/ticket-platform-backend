@@ -2,8 +2,8 @@
 
 ## Khóa tài khoản và bằng chứng — 12/10/2026
 
-- Import `users-moderation.postman_collection.json`: đặt `adminToken`, `targetUserId`
-  của tài khoản test USER/MODERATOR và `moderationReason`. Khóa/mở khóa thu hồi phiên
+- Import `users-moderation.postman_collection.json`: đặt `managerToken` (ADMIN hoặc MODERATOR), `targetUserId`
+  của USER (hoặc MODERATOR nếu người gọi là ADMIN) và `moderationReason`. Request GET chi tiết vẫn dùng `adminToken`. Khóa/mở khóa thu hồi phiên
   cũ; phải đăng nhập lại khi mở khóa. Các request là lựa chọn thao tác riêng.
 - Collection Orders thêm folder `Manual - Dispute evidence (before resolution)`:
   mở tranh chấp trước, chọn file ảnh/PDF trong form-data `file`, upload với

@@ -2,12 +2,16 @@
   "info": {
     "name": "Backend - User moderation",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Manual ADMIN actions. Use disposable test accounts. targetUserId must belong to a USER or MODERATOR, never ADMIN. Lock/unlock revokes old sessions permanently. Re-login after unlocking. See docs/account-moderation-dispute-evidence.md and apply its SQL first when synchronize is disabled. Set adminToken, targetUserId and moderationReason. These requests are alternative actions, not an automatic production runner."
+    "description": "Manual account status actions. Set managerToken to an ADMIN or MODERATOR access token. MODERATOR may suspend, ban and unlock only USER accounts; ADMIN may manage USER and MODERATOR accounts. Self and ADMIN targets are forbidden. Use targetUserId and moderationReason. Lock/unlock permanently revokes old sessions; sign in again after unlock. The GET detail request remains ADMIN-only and uses adminToken. See docs/account-moderation-dispute-evidence.md. Requests are alternative manual actions, not an automatic production runner."
   },
   "variable": [
     {
       "key": "baseUrl",
       "value": "http://localhost:7000"
+    },
+    {
+      "key": "managerToken",
+      "value": ""
     },
     {
       "key": "adminToken",
@@ -32,7 +36,7 @@
           "bearer": [
             {
               "key": "token",
-              "value": "{{adminToken}}",
+              "value": "{{managerToken}}",
               "type": "string"
             }
           ]
@@ -77,7 +81,7 @@
           "bearer": [
             {
               "key": "token",
-              "value": "{{adminToken}}",
+              "value": "{{managerToken}}",
               "type": "string"
             }
           ]
@@ -122,7 +126,7 @@
           "bearer": [
             {
               "key": "token",
-              "value": "{{adminToken}}",
+              "value": "{{managerToken}}",
               "type": "string"
             }
           ]

@@ -65,6 +65,7 @@ export class UsersController {
   }
 
   @Patch(':id/status')
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
   @Audit('users.status.update')
   updateStatus(
     @CurrentUser() actor: Principal,
