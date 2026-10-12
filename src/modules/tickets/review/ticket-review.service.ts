@@ -21,6 +21,7 @@ import { ReviewTicketDto } from '../dto/review-ticket.dto';
 import { TicketResponseDto } from '../dto/ticket-response.dto';
 import { CheckOutcome, CheckStatus, ReviewMethod } from './check.types';
 import { TicketReportService } from './ticket-report.service';
+import { enqueueEmail } from '../../email/email-outbox';
 
 @Injectable()
 export class TicketReviewService {
@@ -54,19 +55,17 @@ export class TicketReviewService {
         }),
       );
     } catch (error) {
-      await this.dataSource
-        .getRepository(TicketCheck)
-        .update(
-          { ticketId: id, version, status: CheckStatus.COMPLETED },
-          {
-            outcome: CheckOutcome.NEEDS_REVIEW,
-            errorCode:
-              error instanceof ConflictException ||
-              error instanceof NotFoundException
-                ? null
-                : 'auto_review_failed',
-          },
-        );
+      await this.dataSource.getRepository(TicketCheck).update(
+        { ticketId: id, version, status: CheckStatus.COMPLETED },
+        {
+          outcome: CheckOutcome.NEEDS_REVIEW,
+          errorCode:
+            error instanceof ConflictException ||
+            error instanceof NotFoundException
+              ? null
+              : 'auto_review_failed',
+        },
+      );
       this.logger.log(
         JSON.stringify({
           action: 'tickets.review.automatic',
@@ -204,7 +203,16 @@ export class TicketReviewService {
             note: dto.decision === 'reject' ? dto.reason : (dto.note ?? null),
             report,
           });
-          return TicketResponseDto.from(await manager.save(ticket));
+          await manager.save(ticket);
+          await enqueueEmail(
+            manager,
+            this.config,
+            dto.decision === 'approve' ? 'ticket_approved' : 'ticket_rejected',
+            id,
+            [ticket.sellerId],
+            dto.decision === 'reject' ? dto.reason : null,
+          );
+          return TicketResponseDto.from(ticket);
         },
       );
     } catch (error) {

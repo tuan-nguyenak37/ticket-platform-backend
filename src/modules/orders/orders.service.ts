@@ -31,6 +31,7 @@ import { UserStatus } from '../users/entities/enums/user-status.enum';
 import type { Principal } from '../auth/authorization/principal';
 import { generateId } from '../../common/utils/generateId';
 import { UploadsService } from '../../common/uploads/uploads.service';
+import { enqueueEmail } from '../email/email-outbox';
 
 @Injectable()
 export class OrdersService {
@@ -246,6 +247,9 @@ export class OrdersService {
         c.order.status = OrderStatus.DISPUTED;
         c.order.payoutStatus = 'blocked';
         await c.manager.save(c.order);
+        await enqueueEmail(c.manager, this.config, 'dispute_opened', id, [
+          c.order.sellerId,
+        ]);
         return this.store.response(c.manager, c.order);
       },
       actor,
@@ -272,6 +276,9 @@ export class OrdersService {
         } else {
           dispute.sellerResponse = response;
           await c.manager.save(dispute);
+          await enqueueEmail(c.manager, this.config, 'dispute_replied', id, [
+            c.order.buyerId,
+          ]);
         }
         return this.store.response(c.manager, c.order);
       },
@@ -312,6 +319,17 @@ export class OrdersService {
       await c.manager.save(dispute);
       await c.manager.save(c.order);
       await this.reconcile(c);
+      await enqueueEmail(
+        c.manager,
+        this.config,
+        dto.decision === 'accept' ? 'dispute_accepted' : 'dispute_rejected',
+        id,
+        [c.order.buyerId, c.order.sellerId],
+      );
+      if (c.order.status === OrderStatus.REFUND_PENDING)
+        await enqueueEmail(c.manager, this.config, 'refund_pending', id, [
+          c.order.buyerId,
+        ]);
       return this.store.response(c.manager, c.order);
     });
   }
@@ -341,6 +359,13 @@ export class OrdersService {
           OrderPayment,
           { orderId: order.order_id },
           { status: PaymentStatus.REFUND_PENDING },
+        );
+        await enqueueEmail(
+          manager,
+          this.config,
+          'refund_pending',
+          order.order_id,
+          [order.buyerId],
         );
       } else {
         const deadline = new Date(

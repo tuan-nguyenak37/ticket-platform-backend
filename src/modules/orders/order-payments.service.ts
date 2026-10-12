@@ -13,6 +13,7 @@ import { User } from '../users/entities/user.entity';
 import { UserStatus } from '../users/entities/enums/user-status.enum';
 import type { Principal } from '../auth/authorization/principal';
 import { generateId } from '../../common/utils/generateId';
+import { enqueueEmail } from '../email/email-outbox';
 
 @Injectable()
 export class OrderPaymentsService {
@@ -135,6 +136,18 @@ export class OrderPaymentsService {
         }
         await c.manager.save(payment);
         await c.manager.save(c.order);
+        if (result === 'success')
+          await enqueueEmail(
+            c.manager,
+            this.config,
+            c.order.status === OrderStatus.PAID
+              ? 'order_paid'
+              : 'refund_pending',
+            id,
+            c.order.status === OrderStatus.PAID
+              ? [c.order.buyerId, c.order.sellerId]
+              : [c.order.buyerId],
+          );
         return this.store.response(c.manager, c.order);
       },
       actor,
@@ -162,6 +175,9 @@ export class OrderPaymentsService {
       c.order.payoutStatus = 'none';
       await c.manager.save(payment);
       await c.manager.save(c.order);
+      await enqueueEmail(c.manager, this.config, 'refunded', id, [
+        c.order.buyerId,
+      ]);
       return this.store.response(c.manager, c.order);
     });
   }

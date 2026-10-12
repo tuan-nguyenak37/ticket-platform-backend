@@ -15,6 +15,24 @@ export const envValidationSchema = Joi.object({
     .valid('development', 'production', 'test', 'provision')
     .default('development'),
   PORT: Joi.number().default(3000),
+  EMAIL_ENABLED: Joi.boolean().default(false),
+  EMAIL_REDIS_URL: Joi.string()
+    .uri({ scheme: ['redis', 'rediss'] })
+    .default('redis://127.0.0.1:6380/0'),
+  EMAIL_QUEUE_PREFIX: Joi.string()
+    .pattern(/^[a-zA-Z0-9_-]{1,60}$/)
+    .default('ticketverse'),
+  EMAIL_RATE_PER_MINUTE: Joi.number().integer().min(1).max(60).default(10),
+  EMAIL_GMAIL_USER: Joi.string().email().when('EMAIL_ENABLED', {
+    is: true,
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
+  EMAIL_GMAIL_APP_PASSWORD: Joi.string().min(16).when('EMAIL_ENABLED', {
+    is: true,
+    then: Joi.required(),
+    otherwise: Joi.optional(),
+  }),
   PAYMENT_MOCK_ENABLED: Joi.boolean().default(false),
   ORDERS_WORKER_ENABLED: Joi.boolean().default(false),
   ORDER_PAYMENT_TIMEOUT_MINUTES: Joi.number()

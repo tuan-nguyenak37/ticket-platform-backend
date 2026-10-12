@@ -46,6 +46,7 @@ import { TicketCheckWorker } from '../tickets/review/ticket-check-worker.service
 import { TicketReportService } from '../tickets/review/ticket-report.service';
 import { TicketReviewService } from '../tickets/review/ticket-review.service';
 import { CheckStatus } from '../tickets/review/check.types';
+import { EmailOutbox } from '../email/email-outbox.entity';
 
 // Explicit opt-in. Only a newly-created random schema is written or dropped.
 const suite = process.env.ORDERS_PG_TEST === '1' ? describe : describe.skip;
@@ -118,6 +119,7 @@ suite('Orders with real PostgreSQL transactions', () => {
         Order,
         OrderPayment,
         OrderDispute,
+        EmailOutbox,
       ],
       synchronize: false,
     }).initialize();
@@ -131,6 +133,7 @@ suite('Orders with real PostgreSQL transactions', () => {
       await runner.query(
         readFileSync('docs/ticket-review-automation.sql', 'utf8'),
       );
+      await runner.query(readFileSync('docs/email-schema.sql', 'utf8'));
     } finally {
       await runner.release();
     }
@@ -138,6 +141,7 @@ suite('Orders with real PostgreSQL transactions', () => {
     const config = new ConfigService({
       NODE_ENV: 'test',
       PAYMENT_MOCK_ENABLED: true,
+      EMAIL_ENABLED: true,
     });
     orders = new OrdersService(
       store,
@@ -246,6 +250,7 @@ suite('Orders with real PostgreSQL transactions', () => {
         ...env,
         NODE_ENV: 'test',
         PAYMENT_MOCK_ENABLED: true,
+        EMAIL_ENABLED: true,
         TICKET_AUTO_APPROVE_ENABLED: false,
         TICKET_CODE_HMAC_SECRET: randomUUID() + randomUUID(),
         UPLOAD_DIR: join('.tmp', schema),
@@ -339,6 +344,12 @@ suite('Orders with real PostgreSQL transactions', () => {
           selectedCodeId: check.scan!.codes[0].id,
           note: 'Reviewed synthetic PDF and OCR warnings in isolated integration test.',
         });
+        expect(
+          await db.getRepository(EmailOutbox).findOneByOrFail({
+            referenceId: created.ticket_id,
+            kind: 'ticket_approved',
+          }),
+        ).toMatchObject({ recipientId: seller.user_id, status: 'pending' });
         const realOrders = new OrdersService(store, config, uploads);
         const realPayments = new OrderPaymentsService(
           store,
@@ -402,6 +413,32 @@ suite('Orders with real PostgreSQL transactions', () => {
       results.find((r) => r.status === OrderStatus.PAID)!.buyerId,
     );
     const loser = results.find((r) => r.status === OrderStatus.REFUND_PENDING)!;
+    const winner = results.find((r) => r.status === OrderStatus.PAID)!;
+    expect(
+      (
+        await db
+          .getRepository(EmailOutbox)
+          .findBy({ referenceId: winner.order_id, kind: 'order_paid' })
+      )
+        .map((m) => m.recipientId)
+        .sort(),
+    ).toEqual([winner.buyerId, seller.user_id].sort());
+    expect(
+      await db.getRepository(EmailOutbox).findOneByOrFail({
+        referenceId: loser.order_id,
+        kind: 'refund_pending',
+      }),
+    ).toMatchObject({ recipientId: loser.buyerId });
+    await payments.result(
+      winner.buyerId === buyer.user_id ? buyer : other,
+      winner.order_id,
+      'success',
+    );
+    expect(
+      await db
+        .getRepository(EmailOutbox)
+        .countBy({ referenceId: winner.order_id, kind: 'order_paid' }),
+    ).toBe(2);
     const refunded = await payments.refund(admin, loser.order_id);
     expect(refunded.status).toBe(OrderStatus.REFUNDED);
     await expect(
@@ -506,6 +543,9 @@ suite('Orders with real PostgreSQL transactions', () => {
       (await db.getRepository(OrderPayment).findOneByOrFail({ orderId: id }))
         .receivedResult,
     ).toBeNull();
+    expect(
+      await db.getRepository(EmailOutbox).countBy({ referenceId: id }),
+    ).toBe(0);
     expect((await payments.result(buyer, id, 'success')).status).toBe(
       OrderStatus.PAID,
     );
@@ -551,6 +591,30 @@ suite('Orders with real PostgreSQL transactions', () => {
       ).status,
     ).toBe(OrderStatus.REFUND_PENDING);
     await payments.refund(admin, id);
+    const notifications = await db
+      .getRepository(EmailOutbox)
+      .findBy({ referenceId: id });
+    expect(
+      notifications
+        .filter((m) => m.kind === 'dispute_opened')
+        .map((m) => m.recipientId),
+    ).toEqual([seller.user_id]);
+    expect(
+      notifications
+        .filter((m) => m.kind === 'dispute_replied')
+        .map((m) => m.recipientId),
+    ).toEqual([buyer.user_id]);
+    expect(
+      notifications
+        .filter((m) => m.kind === 'dispute_accepted')
+        .map((m) => m.recipientId)
+        .sort(),
+    ).toEqual([buyer.user_id, seller.user_id].sort());
+    expect(
+      notifications
+        .filter((m) => m.kind === 'refunded')
+        .map((m) => m.recipientId),
+    ).toEqual([buyer.user_id]);
     await expect(orders.file(buyer, id)).rejects.toMatchObject({ status: 409 });
     expect(
       (

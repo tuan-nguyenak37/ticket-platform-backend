@@ -13,11 +13,13 @@ import { TicketReviewService } from './review/ticket-review.service';
 import { TicketManagementService } from './review/ticket-management.service';
 import { LocalTicketScanner } from './review/local-ticket-scanner.service';
 import { TicketCheckWorker } from './review/ticket-check-worker.service';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Ticket, TicketCheck, TicketReview]),
     UploadsModule,
+    EmailModule,
   ],
   controllers: [TicketsController],
   providers: [
