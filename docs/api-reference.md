@@ -1,5 +1,10 @@
 # Tài liệu API Backend (Chi tiết Request & Response JSON)
 
+Bổ sung 12/10/2026: `PATCH /api/users/:id/status` cho ADMIN khóa/mở khóa;
+`POST /api/orders/me/:id/dispute/evidence` upload ảnh/PDF;
+`GET /api/orders/:id/dispute/evidence/:attachmentId` tải file riêng tư.
+Xem [request, response, phân quyền và SQL nâng cấp](./account-moderation-dispute-evidence.md).
+
 Cập nhật đối chiếu mã nguồn ngày 07/10/2026. Các ví dụ user ở login, refresh và
 danh sách quản trị được rút gọn; trường đầy đủ xem [API Users](./users-api.md).
 

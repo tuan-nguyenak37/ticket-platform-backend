@@ -12,7 +12,10 @@ import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { UserStatus } from './entities/enums/user-status.enum';
 import { UserRole } from './entities/enums/user-role.enum';
-import { comparePassword, hashPassword } from '../../common/utils/password.util';
+import {
+  comparePassword,
+  hashPassword,
+} from '../../common/utils/password.util';
 import {
   createMockUser,
   mockAdminPrincipal,
@@ -113,7 +116,9 @@ describe('UsersService', () => {
   describe('findByEmail and findById', () => {
     it('finds user by email with trimming and lowercasing', async () => {
       repo.findOne.mockResolvedValue(mockRegularUser);
-      const result = await service.findByEmail(' USER.BUYER@ticketplatform.test ');
+      const result = await service.findByEmail(
+        ' USER.BUYER@ticketplatform.test ',
+      );
       expect(repo.findOne).toHaveBeenCalledWith({
         where: { email: 'user.buyer@ticketplatform.test' },
       });
@@ -147,9 +152,9 @@ describe('UsersService', () => {
     });
 
     it('throws UnauthorizedException when user status is not active', async () => {
-      await expect(
-        service.getProfile(mockSuspendedPrincipal),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.getProfile(mockSuspendedPrincipal)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('throws NotFoundException when profile is not found in database', async () => {
@@ -197,7 +202,10 @@ describe('UsersService', () => {
       const user = createMockUser({ password: currentHashed });
       repo.findOne.mockResolvedValue(user);
       repo.update.mockImplementation(
-        (_conditions: unknown, values: { tokenVersion?: unknown }) => {
+        (
+          _conditions: unknown,
+          values: { tokenVersion?: number | (() => string) },
+        ) => {
           if (typeof values?.tokenVersion === 'function') {
             values.tokenVersion();
           }
@@ -219,7 +227,7 @@ describe('UsersService', () => {
           password: currentHashed,
         }),
         expect.objectContaining({
-          password: expect.any(String),
+          password: expect.any(String) as unknown,
         }),
       );
     });
@@ -373,6 +381,94 @@ describe('UsersService', () => {
     });
   });
 
+  describe('updateStatus', () => {
+    it('revokes sessions and saves moderation details with a compare-and-swap update', async () => {
+      const user = createMockUser();
+      repo.findOne.mockResolvedValue(user);
+      repo.update.mockResolvedValue({ affected: 1 });
+      const result = await service.updateStatus(
+        mockAdminPrincipal,
+        user.user_id,
+        { status: UserStatus.SUSPENDED, reason: 'Review fraud report' },
+      );
+      expect(repo.update).toHaveBeenCalledWith(
+        {
+          user_id: user.user_id,
+          role: user.role,
+          status: user.status,
+          tokenVersion: user.tokenVersion,
+        },
+        expect.objectContaining({
+          status: UserStatus.SUSPENDED,
+          statusReason: 'Review fraud report',
+          statusChangedBy: mockAdminPrincipal.user_id,
+          tokenVersion: expect.any(Function) as unknown,
+        }),
+      );
+      expect(result).not.toHaveProperty('password');
+      expect(result).not.toHaveProperty('tokenVersion');
+    });
+
+    it('refuses non-admin callers', async () => {
+      await expect(
+        service.updateStatus(mockUserPrincipal, 'target', {
+          status: UserStatus.BANNED,
+          reason: 'Report',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('protects administrator accounts including self', async () => {
+      repo.findOne.mockResolvedValue(mockAdminUser);
+      await expect(
+        service.updateStatus(mockAdminPrincipal, mockAdminUser.user_id, {
+          status: UserStatus.SUSPENDED,
+          reason: 'Report',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('does not reactivate deleted accounts', async () => {
+      repo.findOne.mockResolvedValue(
+        createMockUser({ status: UserStatus.DELETED }),
+      );
+      await expect(
+        service.updateStatus(mockAdminPrincipal, 'deleted', {
+          status: UserStatus.ACTIVE,
+          reason: 'Restore',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns 409 on concurrent changes without overwriting them', async () => {
+      repo.findOne.mockResolvedValue(createMockUser());
+      repo.update.mockResolvedValue({ affected: 0 });
+      await expect(
+        service.updateStatus(mockAdminPrincipal, 'target', {
+          status: UserStatus.BANNED,
+          reason: 'Report',
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('keeps an identical request idempotent without rewriting the original reason', async () => {
+      repo.findOne.mockResolvedValue(
+        createMockUser({
+          status: UserStatus.SUSPENDED,
+          statusReason: 'Original reason',
+        }),
+      );
+      const result = await service.updateStatus(mockAdminPrincipal, 'target', {
+        status: UserStatus.SUSPENDED,
+        reason: 'Duplicate',
+      });
+      expect(repo.update).not.toHaveBeenCalled();
+      expect(result.moderation.reason).toBe('Original reason');
+    });
+  });
+
   describe('rotateTokenVersion', () => {
     it('rotates token version successfully without login timestamp', async () => {
       repo.update.mockResolvedValue({ affected: 1 });
@@ -398,7 +494,7 @@ describe('UsersService', () => {
         { user_id: 'usr_abc', tokenVersion: 2, status: UserStatus.ACTIVE },
         expect.objectContaining({
           tokenVersion: 3,
-          lastLoginAt: expect.any(Date),
+          lastLoginAt: expect.any(Date) as unknown,
         }),
       );
     });

@@ -224,6 +224,101 @@ describe('Application HTTP flows (repository in memory)', () => {
     });
   });
 
+  it('locks and unlocks accounts without reviving old access or refresh tokens', async () => {
+    const user = await register();
+    const old = await login();
+    const admin = await adminLogin();
+    const path = `/api/users/${user.user_id}/status`;
+    await request(app.getHttpServer())
+      .patch(path)
+      .auth(admin.accessToken, { type: 'bearer' })
+      .send({ status: 'suspended', reason: 'Fraud report under review' })
+      .expect(200);
+    await request(app.getHttpServer())
+      .get('/api/users/me')
+      .auth(old.accessToken, { type: 'bearer' })
+      .expect(401);
+    await request(app.getHttpServer())
+      .post('/api/auth/refresh')
+      .set('Cookie', old.refreshCookie)
+      .expect(401);
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: user.email, password: 'abcdef' })
+      .expect(401);
+    await request(app.getHttpServer())
+      .patch(path)
+      .auth(admin.accessToken, { type: 'bearer' })
+      .send({ status: 'active', reason: 'Review completed' })
+      .expect(200);
+    await request(app.getHttpServer())
+      .get('/api/users/me')
+      .auth(old.accessToken, { type: 'bearer' })
+      .expect(401);
+    await request(app.getHttpServer())
+      .post('/api/auth/refresh')
+      .set('Cookie', old.refreshCookie)
+      .expect(401);
+    const fresh = await login();
+    const res = await request(app.getHttpServer())
+      .get('/api/users/me')
+      .auth(fresh.accessToken, { type: 'bearer' })
+      .expect(200);
+    expect(res.body).not.toHaveProperty('data.moderation');
+    expect(res.body).not.toHaveProperty('data.statusReason');
+  });
+
+  it('restricts status changes to admin and validates status, reason and injected fields', async () => {
+    const user = await register();
+    const regular = await login();
+    const admin = await adminLogin();
+    const path = `/api/users/${user.user_id}/status`;
+    const body = { status: 'banned', reason: 'Confirmed abuse' };
+    await request(app.getHttpServer()).patch(path).send(body).expect(401);
+    await request(app.getHttpServer())
+      .patch(path)
+      .auth(regular.accessToken, { type: 'bearer' })
+      .send(body)
+      .expect(403);
+    const mod = await register('mod@example.com');
+    rows.get(mod.user_id)!.role = UserRole.MODERATOR;
+    const moderator = await login(mod.email);
+    await request(app.getHttpServer())
+      .patch(path)
+      .auth(moderator.accessToken, { type: 'bearer' })
+      .send(body)
+      .expect(403);
+    for (const invalid of [
+      { ...body, status: 'deleted' },
+      { ...body, reason: '  ' },
+      { status: 'active' },
+      { ...body, tokenVersion: 0 },
+    ]) {
+      await request(app.getHttpServer())
+        .patch(path)
+        .auth(admin.accessToken, { type: 'bearer' })
+        .send(invalid)
+        .expect(400);
+    }
+    const adminId = [...rows.values()].find(
+      (u) => u.role === UserRole.ADMIN,
+    )!.user_id;
+    await request(app.getHttpServer())
+      .patch(`/api/users/${adminId}/status`)
+      .auth(admin.accessToken, { type: 'bearer' })
+      .send(body)
+      .expect(403);
+    await request(app.getHttpServer())
+      .patch(`/api/users/${mod.user_id}/status`)
+      .auth(admin.accessToken, { type: 'bearer' })
+      .send(body)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get('/api/users/me')
+      .auth(moderator.accessToken, { type: 'bearer' })
+      .expect(401);
+  });
+
   it('returns 400 for non-string email and refuses privilege injection', async () => {
     for (const body of [
       { email: 123, password: 'abcdef' },

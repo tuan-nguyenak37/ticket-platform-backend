@@ -13,6 +13,7 @@ Prefix: `/api/users`. Các endpoint dưới đây đều yêu cầu Bearer acces
 | GET | /:id | Không | Không | Được | 200 |
 | POST | / | Không | Không | Được | 201 |
 | PATCH | /:id | Không | Không | Được | 200 |
+| PATCH | /:id/status | Không | Không | USER/MODERATOR, không ADMIN | 200 |
 
 Các path /me được khai báo trước /:id. ID user là chuỗi, không chuyển sang số. Người dùng thường phải dùng /me ngay cả khi muốn xem user_id của chính mình; /:id là API quản trị.
 
@@ -91,7 +92,14 @@ Chỉ nhận `{ "fullName": "Tên mới" }`, cùng validation với cập nhật
 
 ### Endpoint đã bỏ
 
-`DELETE /api/users/:id` không còn được đăng ký. Chưa có API xóa tài khoản, đổi role, khóa/mở khóa hoặc reset mật khẩu của người khác.
+`DELETE /api/users/:id` không còn được đăng ký. Chưa có API xóa tài khoản, đổi role hoặc reset mật khẩu của người khác.
+
+ADMIN khóa/mở khóa USER hoặc MODERATOR qua `PATCH /api/users/:id/status`, body
+`{ "status": "suspended", "reason": "Lý do khóa" }`; dùng `active` để mở khóa,
+`banned` khi xác nhận vi phạm. Mỗi lần đổi trạng thái thu hồi phiên cũ; mở khóa cần
+đăng nhập lại. Không được tác động tài khoản ADMIN. API quản trị list/detail và
+đổi trạng thái trả thêm `moderation: { reason, changedBy, changedAt }`.
+Xem [quyền, lỗi và SQL cần áp dụng](./account-moderation-dispute-evidence.md).
 
 ## Dữ liệu user trả về
 

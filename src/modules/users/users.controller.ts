@@ -14,6 +14,7 @@ import { Audit } from '../auth/authorization/audit.interceptor';
 import type { Principal } from '../auth/authorization/principal';
 import { clearRefreshCookie } from '../auth/refresh-cookie';
 import { RateLimit } from '../../common/security/rate-limit.decorator';
+import { UpdateUserStatusDto, UserIdDto } from './dto/update-user-status.dto';
 
 @Controller('users')
 @Roles(UserRole.ADMIN)
@@ -61,6 +62,16 @@ export class UsersController {
   @Get(':id')
   findOne(@CurrentUser() actor: Principal, @Param('id') id: string) {
     return this.usersService.findOne(actor, id);
+  }
+
+  @Patch(':id/status')
+  @Audit('users.status.update')
+  updateStatus(
+    @CurrentUser() actor: Principal,
+    @Param() params: UserIdDto,
+    @Body() dto: UpdateUserStatusDto,
+  ) {
+    return this.usersService.updateStatus(actor, params.id, dto);
   }
 
   @Patch(':id')

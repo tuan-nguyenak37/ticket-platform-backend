@@ -13,7 +13,8 @@ Ba role: USER, MODERATOR, ADMIN.
 - Mọi tài khoản active được đăng vé, xem vé mình đăng và hủy vé mình ở trạng thái pending_review/rejected/available. ADMIN/MODERATOR không vượt quyền sở hữu ở các API này.
 - ADMIN/MODERATOR được xem hàng chờ, báo cáo, file vé, yêu cầu kiểm tra và quyết định duyệt/từ chối; không tự duyệt hoặc từ chối vé mình đăng.
 - ADMIN/MODERATOR được ghim/bỏ ghim qua PATCH /api/events/:id/pin; GET /api/events/pinned là public và chỉ trả tối đa 4 sự kiện ghim còn hiệu lực.
-- Không có API đổi role, khóa/mở khóa hoặc xóa tài khoản.
+- ADMIN khóa/mở khóa USER hoặc MODERATOR qua `PATCH /api/users/:id/status`, bắt buộc lý do; không tác động ADMIN. Không có API đổi role hoặc xóa tài khoản.
+- Buyer/seller upload bằng chứng khi tranh chấp mở; hai bên và ADMIN/MODERATOR được tải file qua API xác thực. Xem [hợp đồng chi tiết](./account-moderation-dispute-evidence.md).
 - Chính sách nằm trong code; chưa có bảng permission hoặc giao diện quản trị quyền.
 
 Xem [ma trận API Users](./users-api.md#ma-trận-api-hiện-tại) để biết từng endpoint.

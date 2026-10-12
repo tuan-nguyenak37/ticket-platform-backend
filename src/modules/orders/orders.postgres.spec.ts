@@ -47,6 +47,9 @@ import { TicketReportService } from '../tickets/review/ticket-report.service';
 import { TicketReviewService } from '../tickets/review/ticket-review.service';
 import { CheckStatus } from '../tickets/review/check.types';
 import { EmailOutbox } from '../email/email-outbox.entity';
+import { DisputeEvidenceService } from './dispute-evidence.service';
+import { DisputeEvidenceController } from './dispute-evidence.controller';
+import { readdir, rm } from 'fs/promises';
 
 // Explicit opt-in. Only a newly-created random schema is written or dropped.
 const suite = process.env.ORDERS_PG_TEST === '1' ? describe : describe.skip;
@@ -60,6 +63,7 @@ suite('Orders with real PostgreSQL transactions', () => {
   let orders: OrdersService;
   let payments: OrderPaymentsService;
   let store: OrderStore;
+  let evidence: DisputeEvidenceService;
   const buyer: Principal = {
     user_id: 'buyer',
     role: UserRole.USER,
@@ -134,6 +138,12 @@ suite('Orders with real PostgreSQL transactions', () => {
         readFileSync('docs/ticket-review-automation.sql', 'utf8'),
       );
       await runner.query(readFileSync('docs/email-schema.sql', 'utf8'));
+      await runner.query(
+        readFileSync('docs/account-moderation-dispute-evidence.sql', 'utf8'),
+      );
+      await runner.query(
+        readFileSync('docs/account-moderation-dispute-evidence.sql', 'utf8'),
+      );
     } finally {
       await runner.release();
     }
@@ -149,6 +159,12 @@ suite('Orders with real PostgreSQL transactions', () => {
       upload as unknown as UploadsService,
     );
     payments = new OrderPaymentsService(store, orders, config);
+    evidence = new DisputeEvidenceService(
+      store,
+      new UploadsService(
+        new ConfigService({ UPLOAD_DIR: join('.tmp', schema) }),
+      ),
+    );
     for (const actor of [buyer, other, seller, admin])
       await db.getRepository(User).save({
         user_id: actor.user_id,
@@ -173,8 +189,9 @@ suite('Orders with real PostgreSQL transactions', () => {
         db.getRepository(User).findOneBy({ user_id: id }),
     } as unknown as UsersService;
     const module = await Test.createTestingModule({
-      controllers: [OrdersController],
+      controllers: [OrdersController, DisputeEvidenceController],
       providers: [
+        { provide: DisputeEvidenceService, useValue: evidence },
         { provide: OrdersService, useValue: orders },
         { provide: OrderPaymentsService, useValue: payments },
         {
@@ -196,6 +213,7 @@ suite('Orders with real PostgreSQL transactions', () => {
 
   afterAll(async () => {
     if (app) await app.close();
+    await rm(join('.tmp', schema), { recursive: true, force: true });
     if (db?.isInitialized) await db.destroy();
     if (adminDb?.isInitialized) {
       if (schemaCreated && /^orders_test_[a-f0-9]{32}$/.test(schema))
@@ -241,6 +259,169 @@ suite('Orders with real PostgreSQL transactions', () => {
     await payments.start(actor, order.order_id);
     return order.order_id;
   }
+
+  it('uploads private evidence for both parties, enforces HTTP access and preserves it after resolution', async () => {
+    const id = await pending();
+    await payments.result(buyer, id, 'success');
+    await orders.dispute(buyer, id, {
+      reason: 'Invalid ticket',
+      evidence: 'Gate refused entry',
+    });
+    const bytes = Buffer.from('%PDF-1.4\nEvidence test\n%%EOF');
+    const path = `/api/orders/me/${id}/dispute/evidence`;
+    await request(app.getHttpServer())
+      .post(path)
+      .attach('file', bytes, 'proof.pdf')
+      .expect(401);
+    await request(app.getHttpServer())
+      .post(path)
+      .auth('other', { type: 'bearer' })
+      .attach('file', bytes, 'proof.pdf')
+      .expect(404);
+    await request(app.getHttpServer())
+      .post(path)
+      .auth('buyer', { type: 'bearer' })
+      .attach('file', Buffer.from('<script>bad</script>'), {
+        filename: 'fake.pdf',
+        contentType: 'application/pdf',
+      })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post(path)
+      .auth('buyer', { type: 'bearer' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post(path)
+      .auth('buyer', { type: 'bearer' })
+      .attach('file', Buffer.alloc(5 * 1024 * 1024 + 1), 'large.pdf')
+      .expect(413);
+    for (const actor of [buyer, seller]) {
+      await request(app.getHttpServer())
+        .post(path)
+        .auth(actor.user_id, { type: 'bearer' })
+        .attach('file', bytes, 'proof.pdf')
+        .expect(201);
+    }
+    const detail = await orders.detail(buyer, id);
+    expect(detail.dispute!.attachments).toHaveLength(2);
+    expect(detail.dispute!.attachments[0]).not.toHaveProperty('filename');
+    const download = detail.dispute!.attachments[0].downloadUrl;
+    await request(app.getHttpServer()).get(download).expect(401);
+    await request(app.getHttpServer())
+      .get(download)
+      .auth('other', { type: 'bearer' })
+      .expect(403);
+    for (const actor of [buyer, seller, admin]) {
+      const res = await request(app.getHttpServer())
+        .get(download)
+        .auth(actor.user_id, { type: 'bearer' })
+        .expect(200);
+      expect(res.body).toEqual(bytes);
+      expect(res.headers['cache-control']).toBe('no-store');
+      expect(res.headers['content-disposition']).toBe('attachment');
+    }
+    await orders.resolve(admin, id, {
+      decision: 'reject',
+      note: 'Reviewed proof',
+    });
+    await request(app.getHttpServer())
+      .post(path)
+      .auth('buyer', { type: 'bearer' })
+      .attach('file', bytes, 'proof.pdf')
+      .expect(409);
+    await request(app.getHttpServer())
+      .get(download)
+      .auth('admin', { type: 'bearer' })
+      .expect(200);
+  });
+
+  it('serializes simultaneous evidence uploads so each party cannot exceed five files', async () => {
+    const id = await pending();
+    await payments.result(buyer, id, 'success');
+    await orders.dispute(buyer, id, {
+      reason: 'Invalid ticket',
+      evidence: 'Proof',
+    });
+    const results = await Promise.all(
+      Array.from({ length: 6 }, () =>
+        request(app.getHttpServer())
+          .post(`/api/orders/me/${id}/dispute/evidence`)
+          .auth('buyer', { type: 'bearer' })
+          .attach('file', Buffer.from('%PDF-1.4\nproof'), 'proof.pdf'),
+      ),
+    );
+    expect(results.filter((r) => r.status === 201)).toHaveLength(5);
+    expect(results.filter((r) => r.status === 409)).toHaveLength(1);
+    expect((await orders.detail(buyer, id)).dispute!.attachments).toHaveLength(
+      5,
+    );
+  });
+
+  it('cleans up evidence on database rollback', async () => {
+    const id = await pending();
+    await payments.result(buyer, id, 'success');
+    await orders.dispute(buyer, id, {
+      reason: 'Invalid ticket',
+      evidence: 'Proof',
+    });
+    const before = await readdir(join('.tmp', schema, 'disputes')).catch(
+      () => [],
+    );
+    const fail = jest
+      .spyOn(store, 'response')
+      .mockRejectedValueOnce(new Error('simulated DB failure'));
+    try {
+      await expect(
+        evidence.upload(buyer, id, {
+          buffer: Buffer.from('%PDF-1.4\nproof'),
+          mimetype: 'application/pdf',
+        } as Express.Multer.File),
+      ).rejects.toThrow('simulated DB failure');
+    } finally {
+      fail.mockRestore();
+    }
+    const after = await readdir(join('.tmp', schema, 'disputes')).catch(
+      () => [],
+    );
+    expect(after.sort()).toEqual(before.sort());
+    expect((await orders.detail(buyer, id)).dispute!.attachments).toHaveLength(
+      0,
+    );
+  });
+
+  it('updates account status atomically and rejects stale token rotation', async () => {
+    const repo = db.getRepository(User);
+    const users = new UsersService(repo);
+    const target = await repo.save({
+      user_id: randomUUID(),
+      email: `${randomUUID()}@test.local`,
+      password: 'unused',
+      role: UserRole.USER,
+    });
+    const results = await Promise.allSettled([
+      users.updateStatus(admin, target.user_id, {
+        status: UserStatus.SUSPENDED,
+        reason: 'Review',
+      }),
+      users.rotateTokenVersion(target),
+    ]);
+    expect(results.some((r) => r.status === 'fulfilled')).toBe(true);
+    // A login CAS may win first, in which case an admin retries after reloading.
+    await users.updateStatus(admin, target.user_id, {
+      status: UserStatus.SUSPENDED,
+      reason: 'Review',
+    });
+    await expect(users.rotateTokenVersion(target)).rejects.toThrow();
+    await users.updateStatus(admin, target.user_id, {
+      status: UserStatus.ACTIVE,
+      reason: 'Review complete',
+    });
+    const updated = await repo.findOneByOrFail({ user_id: target.user_id });
+    expect(updated.tokenVersion).toBeGreaterThan(target.tokenVersion);
+    expect(updated.statusChangedBy).toBe(admin.user_id);
+    expect(updated.statusReason).toBe('Review complete');
+    await expect(users.rotateTokenVersion(target)).rejects.toThrow();
+  });
 
   (process.env.TICKET_OCR_TEST === '1' ? it : it.skip)(
     'uploads a PDF, runs real OCR, approves it and delivers the original file after payment',

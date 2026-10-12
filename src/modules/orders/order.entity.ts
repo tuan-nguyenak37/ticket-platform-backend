@@ -111,6 +111,8 @@ export class OrderDispute {
   order!: Order;
   @Column({ type: 'text' }) reason!: string;
   @Column({ type: 'text' }) evidence!: string;
+  @Column({ type: 'jsonb', default: () => "'[]'::jsonb" })
+  attachments!: DisputeAttachment[];
   @Column({ type: 'text', nullable: true }) sellerResponse!: string | null;
   @Column({ type: 'varchar', length: 16, default: 'open' }) status!:
     'open' | 'accepted' | 'rejected';
@@ -119,4 +121,14 @@ export class OrderDispute {
   @Column({ type: 'text', nullable: true }) resolution!: string | null;
   @Column({ type: 'timestamptz', nullable: true }) resolvedAt!: Date | null;
   @CreateDateColumn({ type: 'timestamptz' }) createdAt!: Date;
+}
+
+export interface DisputeAttachment {
+  id: string;
+  uploadedBy: string;
+  side: 'buyer' | 'seller';
+  filename: string;
+  mimetype: string;
+  size: number;
+  createdAt: string;
 }

@@ -69,7 +69,7 @@ export class UploadsService {
 
   async save(
     file: Express.Multer.File | undefined,
-    scope?: 'events' | 'tickets',
+    scope?: 'events' | 'tickets' | 'disputes',
   ): Promise<StoredUpload> {
     const mimetype = this.validate(file, scope === 'events');
     const directory = resolve(
@@ -197,6 +197,47 @@ export class UploadsService {
       ) {
         throw new NotFoundException('Ticket file not found');
       }
+      throw error;
+    }
+  }
+
+  private disputePath(filename: string): string {
+    if (!/^[0-9a-f-]{36}\.(jpg|png|gif|webp|pdf)$/.test(filename))
+      throw new NotFoundException('Evidence file not found');
+    return join(
+      resolve(this.config.get<string>('UPLOAD_DIR', 'uploads'), 'disputes'),
+      filename,
+    );
+  }
+
+  async removeDisputeFile(filename: string): Promise<void> {
+    try {
+      await unlink(this.disputePath(filename));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+        this.logger.error(
+          JSON.stringify({
+            action: 'uploads.cleanup',
+            filename,
+            result: 'failed',
+          }),
+        );
+    }
+  }
+
+  async readDisputeFile(filename: string) {
+    try {
+      const buffer = await readFile(this.disputePath(filename));
+      const mimetype = detectMime(buffer);
+      if (!mimetype) throw new NotFoundException('Evidence file not found');
+      return { buffer, mimetype };
+    } catch (error) {
+      if (
+        ['ENOENT', 'ENOTDIR'].includes(
+          (error as NodeJS.ErrnoException).code ?? '',
+        )
+      )
+        throw new NotFoundException('Evidence file not found');
       throw error;
     }
   }

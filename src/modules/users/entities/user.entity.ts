@@ -70,6 +70,15 @@ export class User {
   })
   status!: UserStatus;
 
+  @Column({ type: 'varchar', length: 1000, nullable: true })
+  statusReason!: string | null;
+
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  statusChangedBy!: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  statusChangedAt!: Date | null;
+
   @Column({
     type: 'boolean',
     default: false,

@@ -2,7 +2,7 @@
   "info": {
     "name": "Backend - Orders",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Local mock only. Read docs/orders-api.md. Cancel/dispute/refund/payout are alternative branches. Clear orderKey for a new checkout; retain it for retries. Tokens must belong to separate buyer, seller and manager accounts. Updated 2026-10-11: response assertions and an explicit concurrent two-buyer test folder. Run either a normal purchase or the race folder on separate tickets.\n\n## Email Gmail / Redis (2026-10-12)\nEmail defaults to disabled. Apply docs/email-schema.sql, configure EMAIL_ENABLED=true and Gmail App Password only in backend .env, start Redis (docker compose -f compose.email.yml up -d), then npm run worker:email. Redis URL defaults to redis://127.0.0.1:6380/0. See docs/email-notifications.md. Never put Gmail credentials in Postman.\n\nExpected notifications after committed transitions:\n- Payment winner: order_paid to buyer and seller.\n- Payment loser or cancelled paid event: refund_pending to buyer.\n- Mock refund: refunded to buyer.\n- Open dispute: dispute_opened to seller.\n- First seller reply: dispute_replied to buyer.\n- Resolve dispute: dispute_accepted/dispute_rejected to both; accepted also refund_pending to buyer.\n\nMock messages are labelled DEMO (no real money). Create/start/cancel-unpaid/download/payout do not send emails. In the race folder, expect 2 paid messages for the winner, 1 refund_pending for the loser, then 1 refunded after step 6. Replaying callbacks must not create additional outbox rows. The initial order status is pending_payment.\n\nInspect email_outbox id/kind/status/attempts and test inboxes separately: HTTP success does not prove delivery. No PDF, QR or payment credentials are attached. Email contains notification text and a reference ID; no frontend configuration is required. Failed messages stop after 5 persisted attempts; retry: npm run worker:email -- retry <outbox-id>. SMTP may duplicate delivery after a crash between acceptance and database commit. Local tests: npm run test:email:integration and npm run test:purchase-flow. No public email/retry API is added.",
+    "description": "Local mock only. Read docs/orders-api.md. Cancel/dispute/refund/payout are alternative branches. Clear orderKey for a new checkout; retain it for retries. Tokens must belong to separate buyer, seller and manager accounts. Updated 2026-10-11: response assertions and an explicit concurrent two-buyer test folder. Run either a normal purchase or the race folder on separate tickets.\n\n## Email Gmail / Redis (2026-10-12)\nEmail defaults to disabled. Apply docs/email-schema.sql, configure EMAIL_ENABLED=true and Gmail App Password only in backend .env, start Redis (docker compose -f compose.email.yml up -d), then npm run worker:email. Redis URL defaults to redis://127.0.0.1:6380/0. See docs/email-notifications.md. Never put Gmail credentials in Postman.\n\nExpected notifications after committed transitions:\n- Payment winner: order_paid to buyer and seller.\n- Payment loser or cancelled paid event: refund_pending to buyer.\n- Mock refund: refunded to buyer.\n- Open dispute: dispute_opened to seller.\n- First seller reply: dispute_replied to buyer.\n- Resolve dispute: dispute_accepted/dispute_rejected to both; accepted also refund_pending to buyer.\n\nMock messages are labelled DEMO (no real money). Create/start/cancel-unpaid/download/payout do not send emails. In the race folder, expect 2 paid messages for the winner, 1 refund_pending for the loser, then 1 refunded after step 6. Replaying callbacks must not create additional outbox rows. The initial order status is pending_payment.\n\nInspect email_outbox id/kind/status/attempts and test inboxes separately: HTTP success does not prove delivery. No PDF, QR or payment credentials are attached. Email contains notification text and a reference ID; no frontend configuration is required. Failed messages stop after 5 persisted attempts; retry: npm run worker:email -- retry <outbox-id>. SMTP may duplicate delivery after a crash between acceptance and database commit. Local tests: npm run test:email:integration and npm run test:purchase-flow. No public email/retry API is added.\n\nDispute evidence: manual folder, run after opening a dispute and before resolving it. Buyer/seller each upload up to 5 images/PDFs, 5 MB each; choose a local file in form-data. Read-only managers may download. Apply docs/account-moderation-dispute-evidence.sql when DB_SYNCHRONIZE=false. Files remain readable after resolution. No evidence-upload email. Cloud sync is not implied by this local collection.",
     "_postman_id": "576d46e8-9105-4342-9656-68a157644d07"
   },
   "variable": [
@@ -64,6 +64,10 @@
     },
     {
       "key": "raceLoserOrderId",
+      "value": ""
+    },
+    {
+      "key": "evidenceId",
       "value": ""
     }
   ],
@@ -883,6 +887,178 @@
                 "exec": [
                   "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
                   "if(pm.response.code===200) pm.test('Refunded',()=>pm.expect(pm.response.json().data.status).to.eql('refunded'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Manual - Dispute evidence (before resolution)",
+      "item": [
+        {
+          "name": "Buyer upload evidence",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/orders/me/{{orderId}}/dispute/evidence",
+            "description": "Choose a local image/PDF for file. Open dispute required. Do not set Content-Type manually.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { const a = pm.response.json().data.dispute.attachments; pm.collectionVariables.set('evidenceId', a[a.length - 1].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Seller upload evidence",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sellerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/orders/me/{{orderId}}/dispute/evidence",
+            "description": "Choose a local image/PDF for file. Open dispute required. Do not set Content-Type manually.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { const a = pm.response.json().data.dispute.attachments; pm.collectionVariables.set('evidenceId', a[a.length - 1].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buyer download evidence",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{buyerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/orders/{{orderId}}/dispute/evidence/{{evidenceId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Private attachment', () => { pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'); pm.expect(pm.response.headers.get('Content-Disposition')).to.eql('attachment'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Seller download evidence",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sellerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/orders/{{orderId}}/dispute/evidence/{{evidenceId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Private attachment', () => { pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'); pm.expect(pm.response.headers.get('Content-Disposition')).to.eql('attachment'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Manager download evidence",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{managerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/orders/{{orderId}}/dispute/evidence/{{evidenceId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Private attachment', () => { pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'); pm.expect(pm.response.headers.get('Content-Disposition')).to.eql('attachment'); });"
                 ]
               }
             }

@@ -1,5 +1,16 @@
 # Postman local Backend
 
+## Khóa tài khoản và bằng chứng — 12/10/2026
+
+- Import `users-moderation.postman_collection.json`: đặt `adminToken`, `targetUserId`
+  của tài khoản test USER/MODERATOR và `moderationReason`. Khóa/mở khóa thu hồi phiên
+  cũ; phải đăng nhập lại khi mở khóa. Các request là lựa chọn thao tác riêng.
+- Collection Orders thêm folder `Manual - Dispute evidence (before resolution)`:
+  mở tranh chấp trước, chọn file ảnh/PDF trong form-data `file`, upload với
+  `buyerToken` hoặc `sellerToken`; tải với token của hai bên hoặc `managerToken`.
+- Xem [giới hạn, response và SQL](../account-moderation-dispute-evidence.md).
+  Các thay đổi này nằm trong collection local, chưa đồng bộ lên Postman cloud.
+
 ## Email Gmail/BullMQ/Redis — 12/10/2026
 
 Collection Tickets và Orders có hướng dẫn email trong Overview và mô tả các

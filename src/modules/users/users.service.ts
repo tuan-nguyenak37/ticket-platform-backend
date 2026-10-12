@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -20,6 +21,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { assertUserAdministrator } from '../auth/authorization/users.policy';
 import type { Principal } from '../auth/authorization/principal';
 import { UserRole } from './entities/enums/user-role.enum';
+import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 
 @Injectable()
 export class UsersService {
@@ -68,12 +70,12 @@ export class UsersService {
       order: { createdAt: 'DESC', user_id: 'ASC' },
       take: 100,
     });
-    return users.map(publicUser);
+    return users.map((user) => this.managedUser(user));
   }
 
   async findOne(actor: Principal, id: string) {
     assertUserAdministrator(actor);
-    return publicUser(await this.requireUser(id));
+    return this.managedUser(await this.requireUser(id));
   }
 
   async update(actor: Principal, id: string, dto: UpdateUserDto) {
@@ -94,6 +96,37 @@ export class UsersService {
     });
     if (!user) throw new NotFoundException('Không tìm thấy hồ sơ');
     return publicUser(user);
+  }
+
+  async updateStatus(actor: Principal, id: string, dto: UpdateUserStatusDto) {
+    assertUserAdministrator(actor);
+    const user = await this.requireUser(id);
+    if (id === actor.user_id || user.role === UserRole.ADMIN)
+      throw new ForbiddenException(
+        'Cannot change an administrator account status',
+      );
+    if (user.status === dto.status) return this.managedUser(user);
+    const result = await this.userRepository.update(
+      {
+        user_id: id,
+        role: user.role,
+        status: user.status,
+        tokenVersion: user.tokenVersion,
+      },
+      {
+        status: dto.status,
+        statusReason: dto.reason,
+        statusChangedBy: actor.user_id,
+        statusChangedAt: new Date(),
+        // Revocation persists after unlock; stale Redis session hashes expire by TTL.
+        tokenVersion: () => '"tokenVersion" + 1',
+      },
+    );
+    if (result.affected !== 1)
+      throw new ConflictException(
+        'Account changed concurrently; reload and retry',
+      );
+    return this.findOne(actor, id);
   }
 
   async updateProfile(actor: Principal, dto: UpdateUserDto) {
@@ -161,6 +194,17 @@ export class UsersService {
       throw new NotFoundException('Không tìm thấy người dùng');
     }
     return user;
+  }
+
+  private managedUser(user: User) {
+    return {
+      ...publicUser(user),
+      moderation: {
+        reason: user.statusReason ?? null,
+        changedBy: user.statusChangedBy ?? null,
+        changedAt: user.statusChangedAt ?? null,
+      },
+    };
   }
 
   private rethrowDatabaseError(error: unknown): never {

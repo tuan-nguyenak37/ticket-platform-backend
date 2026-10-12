@@ -1,5 +1,24 @@
 # Trạng thái kiểm chứng và bàn giao
 
+## Khóa tài khoản và upload bằng chứng — 12/10/2026
+
+- ADMIN đổi trạng thái USER/MODERATOR, lý do bắt buộc, tăng tokenVersion nguyên tử;
+  không tác động ADMIN, không phục hồi tài khoản deleted. Đã kiểm tra khóa và mở
+  khóa đều không cho dùng lại access/refresh token cũ.
+- Buyer/seller upload ảnh/PDF khi tranh chấp mở, tối đa 5 file mỗi bên và 5 MB/file;
+  tải riêng tư cho hai bên và ADMIN/MODERATOR. Giữ file sau khi xử lý tranh chấp.
+- Jest mặc định: 241 test đạt, 37 test tích hợp bỏ qua mặc định.
+- HTTP/E2E Auth/Users: 20/20 đạt, repository trong bộ nhớ và Redis giả lập.
+- PostgreSQL Orders: 18/18 đạt, 1 test OCR bỏ qua ở lượt này. Có HTTP multipart,
+  giới hạn dung lượng, từ chối file giả MIME, kiểm tra quyền, 6 upload đồng thời
+  chỉ lưu 5, rollback dọn file và thay đổi trạng thái tài khoản cạnh tranh với login.
+  SQL nâng cấp đã chạy hai lần trong schema test riêng để kiểm tra tính lặp lại.
+- Build và TypeScript đạt. ESLint cho các file thay đổi đạt sau sửa kiểu mock test.
+- Docs và collection Postman local đã cập nhật; JSON/script đã kiểm tra cú pháp.
+  Chưa đồng bộ Postman cloud hoặc chạy Collection Runner, chưa áp dụng SQL lên
+  database nghiệp vụ. Không gửi email thật. Xem
+  [hướng dẫn triển khai và API](./account-moderation-dispute-evidence.md).
+
 ## Redis chống spam và refresh token — 12/10/2026
 
 - Thêm Redis bắt buộc cho API: bộ đếm nguyên tử, giới hạn chung/request ghi và

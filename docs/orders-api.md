@@ -128,7 +128,9 @@ paid hoặc delivered và còn hạn, kể cả chưa nhận được file. Mỗ
 ```
 
 reason trim 1–2000 ký tự, evidence trim 1–5000 ký tự. Phiên bản này lưu bằng chứng
-dạng văn bản, chưa upload ảnh/video. Không tự mở URL trong nội dung. Seller gửi
+dạng văn bản. Có thể upload thêm ảnh/PDF qua API bằng chứng; chưa hỗ trợ video.
+Xem [upload và quyền tải bằng chứng](./account-moderation-dispute-evidence.md).
+Không tự mở URL trong nội dung. Seller gửi
 `{"response":"Giải trình của người bán"}` (1–5000 ký tự), chỉ một phản hồi;
 gửi lại cùng nội dung được chấp nhận, không cho ghi đè lời giải trình cũ.
 
@@ -232,7 +234,7 @@ Test đọc thông tin kết nối từ .env; có thể ghi đè bằng ORDERS_T
 USERNAME/PASSWORD/NAME. Chỉ cho host loopback và từ chối .env production. Test
 không sửa bảng nghiệp vụ hiện có. Không bật biến trên khi chỉ muốn chạy unit test.
 
-Chưa có VNPay/IPN, tiền thật, nhiều lần thanh toán trên cùng đơn, phí nền tảng,
-upload bằng chứng, thông báo người dùng hoặc thống kê doanh số tự động. Hoàn tiền
+Chưa có VNPay/IPN, tiền thật, nhiều lần thanh toán trên cùng đơn, phí nền tảng
+hoặc thống kê doanh số tự động. Đã có email thông báo và upload bằng chứng ảnh/PDF. Hoàn tiền
 không khôi phục quyền bán vé đã bàn giao. Thay đổi/hủy sự kiện sau khi đã completed
 và chi trả cần quy trình hỗ trợ riêng trước triển khai thanh toán thật.

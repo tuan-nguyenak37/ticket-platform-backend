@@ -1,0 +1,190 @@
+{
+  "info": {
+    "name": "Backend - User moderation",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Manual ADMIN actions. Use disposable test accounts. targetUserId must belong to a USER or MODERATOR, never ADMIN. Lock/unlock revokes old sessions permanently. Re-login after unlocking. See docs/account-moderation-dispute-evidence.md and apply its SQL first when synchronize is disabled. Set adminToken, targetUserId and moderationReason. These requests are alternative actions, not an automatic production runner."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:7000"
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "targetUserId",
+      "value": ""
+    },
+    {
+      "key": "moderationReason",
+      "value": "Manual account review"
+    }
+  ],
+  "item": [
+    {
+      "name": "Suspend account",
+      "request": {
+        "method": "PATCH",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/users/{{targetUserId}}/status",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"suspended\",\n  \"reason\": \"{{moderationReason}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Status updated', () => pm.expect(pm.response.json().data.status).to.eql('suspended'));",
+              "pm.test('No secrets', () => { const d = pm.response.json().data; pm.expect(d).not.to.have.property('password'); pm.expect(d).not.to.have.property('tokenVersion'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ban account",
+      "request": {
+        "method": "PATCH",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/users/{{targetUserId}}/status",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"banned\",\n  \"reason\": \"{{moderationReason}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Status updated', () => pm.expect(pm.response.json().data.status).to.eql('banned'));",
+              "pm.test('No secrets', () => { const d = pm.response.json().data; pm.expect(d).not.to.have.property('password'); pm.expect(d).not.to.have.property('tokenVersion'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Unlock account",
+      "request": {
+        "method": "PATCH",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/users/{{targetUserId}}/status",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"active\",\n  \"reason\": \"{{moderationReason}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Status updated', () => pm.expect(pm.response.json().data.status).to.eql('active'));",
+              "pm.test('No secrets', () => { const d = pm.response.json().data; pm.expect(d).not.to.have.property('password'); pm.expect(d).not.to.have.property('tokenVersion'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin view latest moderation reason",
+      "request": {
+        "method": "GET",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{adminToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{baseUrl}}/api/users/{{targetUserId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

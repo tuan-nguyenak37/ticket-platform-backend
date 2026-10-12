@@ -17,6 +17,8 @@ published chưa kết thúc xuất hiện công khai. Tự duyệt mặc định
 | [JWT và phiên đăng nhập](./auth-session-updates.md) | Cookie, thu hồi token, cấu hình và yêu cầu database |
 | [Bảo mật Redis](./security-redis.md) | Chống spam, 429/Retry-After, refresh token dùng một lần và xử lý Redis lỗi |
 | [API người dùng](./users-api.md) | Hồ sơ cá nhân, đổi mật khẩu và API quản trị |
+| [Khóa tài khoản và bằng chứng](./account-moderation-dispute-evidence.md) | Khóa/mở khóa, thu hồi phiên, upload và tải bằng chứng tranh chấp |
+| [SQL khóa tài khoản và bằng chứng](./account-moderation-dispute-evidence.sql) | Bổ sung cột khi DB_SYNCHRONIZE=false |
 | [API vé](./tickets-api.md) | Đăng vé, danh sách public, vé tôi đăng, lọc/tìm kiếm/phân trang và hủy đăng bán |
 | [Orders và thanh toán](./orders-api.md) | Không giữ vé, chốt giao dịch, thanh toán giả lập, nhận vé, tranh chấp và đối soát |
 | [SQL Orders](./orders-schema.sql) | Ba bảng và ràng buộc chốt vé khi synchronize tắt |

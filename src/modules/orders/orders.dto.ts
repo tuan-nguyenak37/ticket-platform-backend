@@ -20,6 +20,9 @@ export class CreateOrderDto {
 export class OrderIdDto {
   @IsString() @Matches(/^[a-zA-Z0-9_-]{1,40}$/) id!: string;
 }
+export class DisputeAttachmentIdDto extends OrderIdDto {
+  @IsString() @Matches(/^[a-zA-Z0-9_-]{1,40}$/) attachmentId!: string;
+}
 export class ListOrdersDto {
   @Type(() => Number) @IsInt() @Min(1) @Max(100000) page = 1;
   @Type(() => Number) @IsInt() @Min(1) @Max(100) limit = 20;
@@ -85,6 +88,17 @@ export class OrderResponse {
                   dispute_id: dispute.dispute_id,
                   reason: dispute.reason,
                   evidence: dispute.evidence,
+                  attachments: (dispute.attachments ?? []).map(
+                    (attachment) => ({
+                      id: attachment.id,
+                      uploadedBy: attachment.uploadedBy,
+                      side: attachment.side,
+                      mimetype: attachment.mimetype,
+                      size: attachment.size,
+                      createdAt: attachment.createdAt,
+                      downloadUrl: `/api/orders/${order.order_id}/dispute/evidence/${attachment.id}`,
+                    }),
+                  ),
                   sellerResponse: dispute.sellerResponse,
                   status: dispute.status,
                   resolution: dispute.resolution,
