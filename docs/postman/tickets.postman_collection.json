@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Backend - Tickets",
-    "description": "Collection kiểm thử API Quản lý Vé (Tickets) trên sàn pass vé TicketVerse. Sử dụng environment Backend Local - Events với baseUrl=http://localhost:7000 (không thêm /api). New uploads must be PDF. Create stores reviewTicketId; choose eventId explicitly. OCR warnings need manual review; automatic approval stays disabled. Updated 2026-10-11.",
+    "description": "Collection kiểm thử API Quản lý Vé (Tickets) trên sàn pass vé TicketVerse. Sử dụng environment Backend Local - Events với baseUrl=http://localhost:7000 (không thêm /api). New uploads must be PDF. Create stores reviewTicketId; choose eventId explicitly. OCR warnings need manual review; automatic approval stays disabled. Updated 2026-10-11.\n\n## Email Gmail / Redis (2026-10-12)\nEmail defaults to disabled. Apply docs/email-schema.sql, configure EMAIL_ENABLED=true and Gmail App Password only in backend .env, start Redis (docker compose -f compose.email.yml up -d), then npm run worker:email. Redis URL defaults to redis://127.0.0.1:6380/0. See docs/email-notifications.md. Never put Gmail credentials in Postman.\n\nApprove (manual or automatic) sends ticket_approved to seller; Reject sends ticket_rejected with reason to seller. Recheck/upload alone sends no email. SQL outbox is committed with the review; delivery is asynchronous. Inspect email_outbox id/kind/status/attempts and the test seller inbox. HTTP success does not prove inbox delivery. No ticket PDF or QR is attached. Email contains notification text and a reference ID; no frontend configuration is required.\n\nUse a separate pending ticket for rejection. Replaying the same event does not create another notification. Failed messages stop after 5 persisted attempts; retry from backend CLI: npm run worker:email -- retry <outbox-id>. SMTP may duplicate delivery after a crash between acceptance and database commit. Local integration test: npm run test:email:integration (no real Gmail).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_postman_id": "0ac7acad-5f6a-44b1-81eb-51082c7fac0e"
   },
@@ -648,7 +648,7 @@
                 }
               }
             },
-            "description": "Chọn vé pending của người khác có check completed và mã đọc được. Lấy version/code từ Ticket report. Với nhiều mã chọn selectedCodeId thủ công. Approve và Reject là lựa chọn thay thế, không chạy cả hai trên cùng vé."
+            "description": "Chọn vé pending của người khác có check completed và mã đọc được. Lấy version/code từ Ticket report. Với nhiều mã chọn selectedCodeId thủ công. Approve và Reject là lựa chọn thay thế, không chạy cả hai trên cùng vé.\n\nEmail: ticket_approved to seller after the review commits, including automatic approval through the same decision service. Delivery is asynchronous; inspect outbox and inbox. See collection overview for setup."
           },
           "event": [
             {
@@ -693,7 +693,7 @@
                 }
               }
             },
-            "description": "Chọn một vé pending khác nếu vé trước đã approve. Không tự duyệt/từ chối vé mình đăng."
+            "description": "Chọn một vé pending khác nếu vé trước đã approve. Không tự duyệt/từ chối vé mình đăng.\n\nEmail: ticket_rejected to seller including rejection reason. Use a separate pending ticket from the purchase flow. Delivery is asynchronous; inspect outbox and inbox. See collection overview for setup."
           }
         }
       ]

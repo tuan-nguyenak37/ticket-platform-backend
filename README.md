@@ -27,6 +27,10 @@
 
 ## Project setup
 
+Project documentation: [Backend docs](./docs/README.md).
+Gmail notifications use a separate BullMQ/Redis worker; see
+[email setup and operations](./docs/email-notifications.md). Email is disabled by default.
+
 ```bash
 $ npm install
 ```

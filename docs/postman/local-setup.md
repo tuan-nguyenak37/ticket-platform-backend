@@ -1,5 +1,25 @@
 # Postman local Backend
 
+## Email Gmail/BullMQ/Redis — 12/10/2026
+
+Collection Tickets và Orders có hướng dẫn email trong Overview và mô tả các
+request duyệt vé, thanh toán, tranh chấp, hoàn tiền. Không có endpoint gửi email
+mới; dùng các request nghiệp vụ hiện có. Xem [cấu hình email](../email-notifications.md)
+và áp dụng [SQL outbox](../email-schema.sql) trước khi bật `EMAIL_ENABLED`.
+
+- Chạy Redis bằng `docker compose -f compose.email.yml up -d` (cổng 6380),
+  cấu hình Gmail trong `.env` backend và chạy `npm run worker:email` riêng.
+- Không lưu Gmail App Password vào environment/collection Postman.
+- Duyệt/từ chối vé báo người bán; thanh toán thắng báo người mua và người bán;
+  bên thua được báo chờ hoàn tiền. Hoàn tiền báo người mua.
+- Mở tranh chấp báo người bán; phản hồi đầu tiên báo người mua; quyết định báo cả hai.
+- HTTP thành công chỉ xác nhận nghiệp vụ. Kiểm tra `email_outbox` và hộp thư
+  tài khoản test để xác minh gửi; email mock ghi DEMO, không có tiền thật.
+- Hai request tạo đơn trong folder Race kiểm tra trạng thái `pending_payment`.
+- Giữ cùng idempotency key khi kiểm tra callback lặp; số dòng outbox không tăng.
+- Kiểm tra độc lập bằng `npm run test:email:integration`: SMTP local, không gửi Gmail.
+
+
 ## Cập nhật ngày 11/10/2026
 
 Đã import `Backend - Orders` (22 request) và thay bản `Backend - Tickets` (20 request)

@@ -19,6 +19,8 @@ published chưa kết thúc xuất hiện công khai. Tự duyệt mặc định
 | [API vé](./tickets-api.md) | Đăng vé, danh sách public, vé tôi đăng, lọc/tìm kiếm/phân trang và hủy đăng bán |
 | [Orders và thanh toán](./orders-api.md) | Không giữ vé, chốt giao dịch, thanh toán giả lập, nhận vé, tranh chấp và đối soát |
 | [SQL Orders](./orders-schema.sql) | Ba bảng và ràng buộc chốt vé khi synchronize tắt |
+| [Email Gmail/Redis](./email-notifications.md) | Outbox, BullMQ, worker riêng, cấu hình Gmail, retry và kiểm thử |
+| [SQL Email](./email-schema.sql) | Bảng outbox cần áp dụng trước khi bật email |
 | [Collection Orders](./postman/orders.postman_collection.json) | Luồng mua, thanh toán giả lập, tranh chấp, hoàn tiền và chi trả |
 | [Kiểm tra/duyệt vé](./ticket-review-automation.md) | OCR local, QR/barcode, chống trùng, tự duyệt và duyệt thủ công |
 | [SQL kiểm tra vé](./ticket-review-automation.sql) | Schema/index cho môi trường tắt synchronize |
@@ -36,7 +38,7 @@ published chưa kết thúc xuất hiện công khai. Tự duyệt mặc định
 | [Collection Tickets](./postman/tickets.postman_collection.json) | Đăng, tìm kiếm, hủy, kiểm duyệt và xem vé tôi đăng |
 | [Postman local](./postman/local-setup.md) | Cấu hình environment và cách dùng các collection |
 | [Hướng dẫn kiểm thử từng Module](./module-testing-guide.md) | Tài liệu hướng dẫn chi tiết cách chạy Unit, E2E và Postman cho từng module |
-| [Báo cáo kết quả kiểm thử hệ thống](./software-test-report.md) | Báo cáo lịch sử; hiện đạt 217 test thường và 15 test PostgreSQL/OCR chạy riêng, TypeScript đã sạch |
+| [Báo cáo kết quả kiểm thử hệ thống](./software-test-report.md) | Báo cáo lịch sử; xem verification-status cho kết quả hiện tại: 226 test thường, 15 PostgreSQL/OCR và 6 email tích hợp |
 | [Đặc tả kiểm thử Auth](./test-cases/auth-module-test-specification.md) | Kịch bản kiểm thử đăng ký, đăng nhập, cookie và phân quyền |
 | [Đặc tả kiểm thử Users](./test-cases/user-module-test-specification.md) | Kịch bản và dữ liệu kiểm thử tài khoản |
 | [Đặc tả kiểm thử Events](./test-cases/events-module-test-specification.md) | Kịch bản quản lý sự kiện và ghim |

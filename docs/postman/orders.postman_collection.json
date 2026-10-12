@@ -2,7 +2,7 @@
   "info": {
     "name": "Backend - Orders",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Local mock only. Read docs/orders-api.md. Cancel/dispute/refund/payout are alternative branches. Clear orderKey for a new checkout; retain it for retries. Tokens must belong to separate buyer, seller and manager accounts. Updated 2026-10-11: response assertions and an explicit concurrent two-buyer test folder. Run either a normal purchase or the race folder on separate tickets.",
+    "description": "Local mock only. Read docs/orders-api.md. Cancel/dispute/refund/payout are alternative branches. Clear orderKey for a new checkout; retain it for retries. Tokens must belong to separate buyer, seller and manager accounts. Updated 2026-10-11: response assertions and an explicit concurrent two-buyer test folder. Run either a normal purchase or the race folder on separate tickets.\n\n## Email Gmail / Redis (2026-10-12)\nEmail defaults to disabled. Apply docs/email-schema.sql, configure EMAIL_ENABLED=true and Gmail App Password only in backend .env, start Redis (docker compose -f compose.email.yml up -d), then npm run worker:email. Redis URL defaults to redis://127.0.0.1:6380/0. See docs/email-notifications.md. Never put Gmail credentials in Postman.\n\nExpected notifications after committed transitions:\n- Payment winner: order_paid to buyer and seller.\n- Payment loser or cancelled paid event: refund_pending to buyer.\n- Mock refund: refunded to buyer.\n- Open dispute: dispute_opened to seller.\n- First seller reply: dispute_replied to buyer.\n- Resolve dispute: dispute_accepted/dispute_rejected to both; accepted also refund_pending to buyer.\n\nMock messages are labelled DEMO (no real money). Create/start/cancel-unpaid/download/payout do not send emails. In the race folder, expect 2 paid messages for the winner, 1 refund_pending for the loser, then 1 refunded after step 6. Replaying callbacks must not create additional outbox rows. The initial order status is pending_payment.\n\nInspect email_outbox id/kind/status/attempts and test inboxes separately: HTTP success does not prove delivery. No PDF, QR or payment credentials are attached. Email contains notification text and a reference ID; no frontend configuration is required. Failed messages stop after 5 persisted attempts; retry: npm run worker:email -- retry <outbox-id>. SMTP may duplicate delivery after a crash between acceptance and database commit. Local tests: npm run test:email:integration and npm run test:purchase-flow. No public email/retry API is added.",
     "_postman_id": "576d46e8-9105-4342-9656-68a157644d07"
   },
   "variable": [
@@ -270,7 +270,8 @@
               "language": "json"
             }
           }
-        }
+        },
+        "description": "\n\nEmail: paid winner -> order_paid to buyer and seller; late/losing payment -> refund_pending to buyer. Mock notifications are DEMO. Delivery is asynchronous; inspect outbox and inbox. See collection overview for setup."
       },
       "event": [
         {
@@ -344,7 +345,8 @@
               "language": "json"
             }
           }
-        }
+        },
+        "description": "\n\nEmail: dispute_opened to seller after commit. Delivery is asynchronous; inspect outbox and inbox. See collection overview for setup."
       },
       "event": [
         {
@@ -387,7 +389,8 @@
               "language": "json"
             }
           }
-        }
+        },
+        "description": "\n\nEmail: dispute_replied to buyer on the first saved reply. Delivery is asynchronous; inspect outbox and inbox. See collection overview for setup."
       },
       "event": [
         {
@@ -488,7 +491,8 @@
               "language": "json"
             }
           }
-        }
+        },
+        "description": "\n\nEmail: dispute_accepted or dispute_rejected to buyer and seller; accept also creates refund_pending for buyer. Delivery is asynchronous; inspect outbox and inbox. See collection overview for setup."
       },
       "event": [
         {
@@ -517,7 +521,8 @@
           ]
         },
         "header": [],
-        "url": "{{baseUrl}}/api/orders/manage/{{orderId}}/refund/mock"
+        "url": "{{baseUrl}}/api/orders/manage/{{orderId}}/refund/mock",
+        "description": "\n\nEmail: refunded to buyer after committed mock refund (DEMO). Delivery is asynchronous; inspect outbox and inbox. See collection overview for setup."
       },
       "event": [
         {
@@ -616,7 +621,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
-                  "if(pm.response.code===201){ const d=pm.response.json().data; pm.test('Pending without reservation',()=>pm.expect(d.status).to.eql('pending')); pm.environment.set('raceOrderA',d.order_id); }"
+                  "if(pm.response.code===201){ const d=pm.response.json().data; pm.test('Pending without reservation',()=>pm.expect(d.status).to.eql('pending_payment')); pm.environment.set('raceOrderA',d.order_id); }"
                 ]
               }
             }
@@ -674,7 +679,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
-                  "if(pm.response.code===201){ const d=pm.response.json().data; pm.test('Pending without reservation',()=>pm.expect(d.status).to.eql('pending')); pm.environment.set('raceOrderB',d.order_id); }"
+                  "if(pm.response.code===201){ const d=pm.response.json().data; pm.test('Pending without reservation',()=>pm.expect(d.status).to.eql('pending_payment')); pm.environment.set('raceOrderB',d.order_id); }"
                 ]
               }
             }
@@ -753,7 +758,8 @@
                 }
               ]
             },
-            "header": []
+            "header": [],
+            "description": "\n\nEmail: exactly 2 order_paid rows for winner (buyer + seller), 1 refund_pending row for loser (buyer). Callback replay creates no additional rows. Delivery is asynchronous; inspect outbox and inbox. See collection overview for setup."
           },
           "event": [
             {
@@ -866,7 +872,8 @@
                 }
               ]
             },
-            "header": []
+            "header": [],
+            "description": "\n\nEmail: refunded to losing buyer (DEMO). Delivery is asynchronous; inspect outbox and inbox. See collection overview for setup."
           },
           "event": [
             {

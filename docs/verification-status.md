@@ -1,5 +1,28 @@
 # Trạng thái kiểm chứng và bàn giao
 
+## Email Gmail/BullMQ/Redis — 12/10/2026
+
+- Đã bổ sung outbox cùng transaction nghiệp vụ, worker BullMQ riêng, Gmail SMTP
+  TLS, giới hạn tốc độ và CLI retry. Cấu hình kết nối Redis tập trung tại
+  `src/config/redis/redis.config.ts`; giá trị môi trường được kiểm tra trong
+  `src/config/env.validation.ts`.
+- Kiểm tra trước commit: Jest mặc định 226 test đạt, 21 test tích hợp bỏ qua;
+  bao gồm 4 test PING/PONG, lỗi kết nối và timeout Redis. PostgreSQL/OCR đã chạy
+  riêng đạt 15/15 trong lượt triển khai.
+- Bộ email: 11/11 đạt (5 unit và 6 tích hợp PostgreSQL/Redis/SMTP local).
+  Bao gồm rollback, Redis không kết nối, khôi phục job mất, SMTP retry,
+  chống gửi đồng thời, giới hạn lần thử và retry thủ công.
+- TypeScript và build đã đạt trong lượt triển khai email. Không gửi Gmail thật
+  hoặc chạy Collection Runner. Email không yêu cầu cấu hình frontend.
+- Cấu hình mẫu mặc định tắt. Đã kiểm tra `.env` local: email bật, Gmail xác thực
+  SMTP/TLS thành công, Redis trả PONG, PostgreSQL kết nối và bảng outbox đủ cột.
+  Chưa gửi email thật. Thông tin xác thực chỉ giữ trong `.env` bị Git bỏ qua.
+  Xem [hướng dẫn cấu hình và vận hành](./email-notifications.md).
+- Collection local Tickets/Orders đã bổ sung mô tả email và sửa assertion trạng
+  thái tạo đơn trong Race thành `pending_payment`. Đã thao tác Import/Replace
+  trên Postman; chưa xác minh lại nội dung lưu trên server sau reload.
+
+
 ## Sửa test và xác minh PostgreSQL/OCR — 11/10/2026
 
 - Đã sửa 8 lỗi kiểu dữ liệu test: AuthorizedRequest cho refresh, callback generic của OrderStore.locked và reason của ReviewTicketDto.
