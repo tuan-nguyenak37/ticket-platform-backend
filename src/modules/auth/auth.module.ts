@@ -9,14 +9,17 @@ import { AuthController } from './auth.controller';
 import { TokenService } from './jwt/token.service';
 import { AccessTokenGuard } from './jwt/access-token.guard';
 import { UsersModule } from '../users/users.module';
+import { SecurityModule } from '../../common/security/security.module';
+import { RateLimitGuard } from '../../common/security/rate-limit.guard';
 
 @Module({
-  imports: [UsersModule, JwtModule.register({})],
+  imports: [UsersModule, JwtModule.register({}), SecurityModule],
   controllers: [AuthController],
   providers: [
     TokenService,
     AuthService,
     AuditService,
+    { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_GUARD, useClass: AccessTokenGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },

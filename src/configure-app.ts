@@ -5,6 +5,15 @@ import type { NextFunction, Response } from 'express';
 import type { AuthorizedRequest } from './modules/auth/authorization/principal';
 
 export function configureApp(app: INestApplication) {
+  if (process.env.TRUST_PROXY) {
+    const server = app.getHttpAdapter().getInstance() as {
+      set: (key: string, value: string[]) => void;
+    };
+    server.set(
+      'trust proxy',
+      process.env.TRUST_PROXY.split(',').map((value) => value.trim()),
+    );
+  }
   const allowedOrigins = process.env.FRONTEND_URL
     ? process.env.FRONTEND_URL.split(',').map((origin) => origin.trim())
     : ['http://localhost:5173', 'http://localhost:3000'];
@@ -19,7 +28,7 @@ export function configureApp(app: INestApplication) {
       'X-Request-Id',
       'Idempotency-Key',
     ],
-    exposedHeaders: ['X-Request-Id'],
+    exposedHeaders: ['X-Request-Id', 'Retry-After'],
   });
 
   app.use((req: AuthorizedRequest, res: Response, next: NextFunction) => {

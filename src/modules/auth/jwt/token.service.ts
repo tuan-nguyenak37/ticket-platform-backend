@@ -16,6 +16,12 @@ export class TokenService {
     return this.sign(payload, 'access');
   }
 
+  refreshLifetimeSeconds() {
+    return tokenLifetimeSeconds(
+      this.configService.get<string>('JWT_REFRESH_EXPIRES', '7d'),
+    );
+  }
+
   generateRefreshToken(payload: JwtPayload): Promise<string> {
     return this.sign(payload, 'refresh');
   }

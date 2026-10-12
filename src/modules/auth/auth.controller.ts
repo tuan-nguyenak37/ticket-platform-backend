@@ -1,4 +1,15 @@
-import { Controller, Post, Body, HttpCode, Req, Res } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  Req,
+  Res,
+  Header,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { tokenLifetimeSeconds } from '../../config/token-lifetime';
+import { RateLimit } from '../../common/security/rate-limit.decorator';
 import type { Response } from 'express';
 import { Authenticated, CurrentUser } from './authorization/access-policy';
 import type { Principal } from './authorization/principal';
@@ -17,16 +28,22 @@ import type { AuthenticatedRequest } from './jwt/access-token.guard';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly config: ConfigService,
+  ) {}
 
   @Public()
   @Post('register')
+  @RateLimit({ scope: 'register', limit: 5, seconds: 900 })
   create(@Body() dto: RegisterDto) {
     return this.authService.create(dto);
   }
 
   @Public()
   @Post('login')
+  @RateLimit({ scope: 'login', limit: 10, seconds: 60, account: true })
+  @Header('Cache-Control', 'no-store')
   @HttpCode(200)
   async login(
     @Body() dto: LoginDto,
@@ -39,6 +56,8 @@ export class AuthController {
 
   @Public()
   @Post('refresh')
+  @RateLimit({ scope: 'refresh', limit: 30, seconds: 60 })
+  @Header('Cache-Control', 'no-store')
   @HttpCode(200)
   async refresh(
     @Req() req: AuthenticatedRequest,
@@ -66,10 +85,12 @@ export class AuthController {
   }
 
   private setRefreshCookie(res: Response, token: string) {
-    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
     res.cookie(REFRESH_COOKIE, token, {
       ...refreshCookieOptions(),
-      maxAge: sevenDaysMs, // 7 ngày, đồng bộ với JWT_REFRESH_EXPIRES
+      maxAge:
+        tokenLifetimeSeconds(
+          this.config.get<string>('JWT_REFRESH_EXPIRES', '7d'),
+        ) * 1000,
     });
   }
 }

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Backend - Auth",
-    "description": "Các request hợp lệ: đăng nhập, refresh bằng cookie, lấy hồ sơ hiện tại, đăng xuất. Chọn Backend Local - Events (baseUrl=http://localhost:7000, không thêm /api). Login dùng userEmail/userPassword và lưu sessionAccessToken; cookie refresh được Postman giữ tự động.",
+    "description": "Các request hợp lệ: đăng nhập, refresh bằng cookie, lấy hồ sơ hiện tại, đăng xuất. Chọn Backend Local - Events (baseUrl=http://localhost:7000, không thêm /api). Login dùng userEmail/userPassword và lưu sessionAccessToken; cookie refresh được Postman giữ tự động.\n\nRedis security: API requires Redis even when email is disabled. Login/register/refresh have dedicated limits; 429 includes Retry-After seconds, Redis outage returns 503. Login again after this upgrade: old refresh tokens without a Redis record return 401. Use the cookie jar and only one refresh request at a time. Refresh is single-use; store the newly returned accessToken. Login/refresh responses use Cache-Control: no-store. See docs/security-redis.md. Do not repeatedly run login-heavy collections or bypass limits.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [

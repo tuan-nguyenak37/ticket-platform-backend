@@ -7,6 +7,7 @@ import { User } from '../users/entities/user.entity';
 import { UserStatus } from '../users/entities/enums/user-status.enum';
 import { UserRole } from '../users/entities/enums/user-role.enum';
 import { hashPassword } from '../../common/utils/password.util';
+import { RefreshSessionService } from '../../common/security/refresh-session.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -17,7 +18,17 @@ describe('AuthService', () => {
     create: jest.fn(),
     rotateTokenVersion: jest.fn(),
   };
-  const tokens = { generateTokens: jest.fn(), verifyRefreshToken: jest.fn() };
+  const tokens = {
+    generateTokens: jest.fn(),
+    verifyRefreshToken: jest.fn(),
+    refreshLifetimeSeconds: jest.fn(),
+  };
+  const sessions = {
+    register: jest.fn(),
+    consume: jest.fn(),
+    discard: jest.fn(),
+    revoke: jest.fn(),
+  };
 
   beforeAll(async () => {
     user = Object.assign(new User(), {
@@ -33,6 +44,11 @@ describe('AuthService', () => {
 
   beforeEach(async () => {
     jest.resetAllMocks();
+    sessions.register.mockResolvedValue(undefined);
+    sessions.consume.mockResolvedValue(undefined);
+    sessions.discard.mockResolvedValue(undefined);
+    sessions.revoke.mockResolvedValue(undefined);
+    tokens.refreshLifetimeSeconds.mockReturnValue(604800);
     users.findByEmail.mockResolvedValue(user);
     users.findById.mockResolvedValue(user);
     users.rotateTokenVersion.mockResolvedValue(1);
@@ -45,6 +61,7 @@ describe('AuthService', () => {
         AuthService,
         { provide: UsersService, useValue: users },
         { provide: TokenService, useValue: tokens },
+        { provide: RefreshSessionService, useValue: sessions },
       ],
     }).compile();
     service = module.get(AuthService);
@@ -96,5 +113,39 @@ describe('AuthService', () => {
       service.login({ email: user.email, password: 'abcdef' }),
     ).rejects.toThrow('sign failed');
     expect(users.rotateTokenVersion).not.toHaveBeenCalled();
+  });
+
+  it('refuses a valid JWT whose Redis session was consumed or lost', async () => {
+    tokens.verifyRefreshToken.mockResolvedValue(user);
+    sessions.consume.mockRejectedValue(new UnauthorizedException());
+    await expect(service.refresh('used')).rejects.toThrow(
+      UnauthorizedException,
+    );
+    expect(users.rotateTokenVersion).not.toHaveBeenCalled();
+    expect(sessions.register).not.toHaveBeenCalled();
+  });
+
+  it('does not rotate DB version if Redis cannot register a login', async () => {
+    sessions.register.mockRejectedValue(new Error('redis unavailable'));
+    await expect(
+      service.login({ email: user.email, password: 'abcdef' }),
+    ).rejects.toThrow();
+    expect(users.rotateTokenVersion).not.toHaveBeenCalled();
+  });
+
+  it('discards only its candidate token when the DB rejects concurrent rotation', async () => {
+    users.rotateTokenVersion.mockRejectedValue(new UnauthorizedException());
+    await expect(
+      service.login({ email: user.email, password: 'abcdef' }),
+    ).rejects.toThrow();
+    expect(sessions.discard).toHaveBeenCalledWith(
+      expect.objectContaining({ tokenVersion: 1 }),
+      'refresh',
+    );
+  });
+
+  it('revokes the Redis session after logout', async () => {
+    await service.logout(user);
+    expect(sessions.revoke).toHaveBeenCalledWith(user);
   });
 });

@@ -37,6 +37,20 @@ $ npm install
 
 ## Compile and run the project
 
+Run the API (watch mode) and email worker together during development:
+
+```sh
+npm run start:all
+```
+
+PostgreSQL and Redis must already be running, with email configured and
+`EMAIL_ENABLED=true` in `.env`. Logs are prefixed `API` and `EMAIL`. Ctrl+C stops
+both processes; if either process exits, the other is stopped too. The email
+worker does not watch files, so restart this command after changing email code.
+
+The API also requires Redis for rate limiting and single-use refresh sessions,
+even when email is disabled. See [Redis security](./docs/security-redis.md).
+
 ```bash
 # development
 $ npm run start

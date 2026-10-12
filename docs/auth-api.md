@@ -32,6 +32,10 @@ Các timestamp và giá trị mẫu chỉ mang tính minh họa. Header `X-Reque
 
 ## Endpoint
 
+API có [giới hạn request bằng Redis](./security-redis.md): vượt ngưỡng trả 429 và
+header Retry-After (giây); Redis không sẵn sàng trả 503. Refresh token chỉ dùng
+một lần và phải được đăng ký trong Redis; cookie cũ sau nâng cấp cần login lại.
+
 | Method | Path | Chính sách | Thành công |
 | --- | --- | --- | --- |
 | POST | /auth/register | Public | 201, thông tin user |

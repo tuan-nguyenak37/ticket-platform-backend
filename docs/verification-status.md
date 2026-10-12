@@ -1,5 +1,23 @@
 # Trạng thái kiểm chứng và bàn giao
 
+## Redis chống spam và refresh token — 12/10/2026
+
+- Thêm Redis bắt buộc cho API: bộ đếm nguyên tử, giới hạn chung/request ghi và
+  ngưỡng riêng login/register/refresh/đổi mật khẩu; 429 kèm Retry-After, Redis lỗi
+  trả 503. Chuẩn hóa IP/IPv6 và chỉ tin proxy cấu hình rõ ràng.
+- Refresh token lưu SHA-256 kèm TTL, dùng một lần bằng HDEL nguyên tử; vẫn kiểm
+  tra tokenVersion PostgreSQL. Cookie Max-Age khớp JWT_REFRESH_EXPIRES.
+- `npm test -- --runInBand`: 235 test đạt, 33 test tích hợp bỏ qua mặc định.
+- `npm run test:security:integration`: 58/58 đạt, gồm 12 test tích hợp Redis thật.
+  Năm test HTTP dùng JWT/Redis thật và repository user giả lập, kiểm tra refresh
+  đồng thời chỉ một request thắng, replay, token chưa đăng ký, logout và 429.
+- `npm run test:e2e -- --runInBand`: 18/18 đạt; cập nhật fixture database/Redis
+  cho Auth/Users, không khởi động worker nghiệp vụ hoặc kết nối PostgreSQL thật.
+- Build, TypeScript và ESLint cho các file thay đổi đạt.
+- Có docs và mô tả collection Auth local; chưa đồng bộ collection lên Postman cloud.
+  `.env`/JWT secrets thực tế không thay đổi. Cần login lại sau nâng cấp vì các
+  refresh token cũ chưa có bản ghi Redis.
+
 ## Email Gmail/BullMQ/Redis — 12/10/2026
 
 - Đã bổ sung outbox cùng transaction nghiệp vụ, worker BullMQ riêng, Gmail SMTP

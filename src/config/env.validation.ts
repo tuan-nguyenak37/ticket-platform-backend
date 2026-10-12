@@ -15,6 +15,14 @@ export const envValidationSchema = Joi.object({
     .valid('development', 'production', 'test', 'provision')
     .default('development'),
   PORT: Joi.number().default(3000),
+  SECURITY_REDIS_URL: Joi.string()
+    .uri({ scheme: ['redis', 'rediss'] })
+    .default('redis://127.0.0.1:6380/1'),
+  SECURITY_REDIS_PREFIX: Joi.string()
+    .pattern(/^[a-zA-Z0-9_-]{1,60}$/)
+    .default('ticketverse-security'),
+  RATE_LIMIT_MAX: Joi.number().integer().min(1).max(10000).default(120),
+  TRUST_PROXY: Joi.string().allow('').optional(),
   EMAIL_ENABLED: Joi.boolean().default(false),
   EMAIL_REDIS_URL: Joi.string()
     .uri({ scheme: ['redis', 'rediss'] })
@@ -62,9 +70,12 @@ export const envValidationSchema = Joi.object({
   DB_PASSWORD: Joi.string().required(),
   DB_NAME: Joi.string().required(),
   DB_SYNCHRONIZE: Joi.boolean().optional(),
-  JWT_ACCESS_SECRET: Joi.string().required(),
+  JWT_ACCESS_SECRET: Joi.string()
+    .when('NODE_ENV', { is: 'production', then: Joi.string().min(32) })
+    .required(),
   JWT_ACCESS_EXPIRES: tokenLifetime.default('15m'),
   JWT_REFRESH_SECRET: Joi.string()
+    .when('NODE_ENV', { is: 'production', then: Joi.string().min(32) })
     .invalid(Joi.ref('JWT_ACCESS_SECRET'))
     .required(),
   JWT_REFRESH_EXPIRES: tokenLifetime.default('7d'),

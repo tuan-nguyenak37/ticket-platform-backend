@@ -1,9 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import type { Response } from 'express';
+import type { CookieOptions, Response } from 'express';
 import type { AuthorizedRequest } from './authorization/principal';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { REFRESH_COOKIE } from './refresh-cookie';
+import { ConfigService } from '@nestjs/config';
 import {
   mockAuthUserPrincipal,
   mockRegisterDto,
@@ -37,7 +38,13 @@ describe('AuthController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [{ provide: AuthService, useValue: authService }],
+      providers: [
+        { provide: AuthService, useValue: authService },
+        {
+          provide: ConfigService,
+          useValue: new ConfigService({ JWT_REFRESH_EXPIRES: '2h' }),
+        },
+      ],
     }).compile();
 
     controller = module.get<AuthController>(AuthController);
@@ -59,10 +66,10 @@ describe('AuthController', () => {
     it('logs in user, sets refresh cookie, and returns payload without refreshToken in body', async () => {
       let cookieName = '';
       let cookieVal = '';
-      let cookieOpts: any = null;
+      let cookieOpts: CookieOptions = {};
 
       const mockRes = {
-        cookie: jest.fn((name, val, opts) => {
+        cookie: jest.fn((name: string, val: string, opts: CookieOptions) => {
           cookieName = name;
           cookieVal = val;
           cookieOpts = opts;
@@ -75,6 +82,7 @@ describe('AuthController', () => {
       expect(cookieName).toBe(REFRESH_COOKIE);
       expect(cookieVal).toBe(mockAuthTokens.refreshToken);
       expect(cookieOpts.httpOnly).toBe(true);
+      expect(cookieOpts.maxAge).toBe(7200000);
       expect(result).toHaveProperty('accessToken');
       expect(result).toHaveProperty('user');
       expect(result).not.toHaveProperty('refreshToken');
@@ -91,7 +99,7 @@ describe('AuthController', () => {
       } as unknown as AuthorizedRequest;
 
       const mockRes = {
-        cookie: jest.fn((name, val) => {
+        cookie: jest.fn((name: string, val: string) => {
           cookieVal = val;
         }),
       } as unknown as Response;
@@ -120,7 +128,7 @@ describe('AuthController', () => {
     it('revokes session and clears refresh cookie', async () => {
       let clearedCookieName = '';
       const mockRes = {
-        clearCookie: jest.fn((name) => {
+        clearCookie: jest.fn((name: string) => {
           clearedCookieName = name;
         }),
       } as unknown as Response;

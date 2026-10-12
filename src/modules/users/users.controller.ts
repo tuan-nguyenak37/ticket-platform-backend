@@ -13,6 +13,7 @@ import {
 import { Audit } from '../auth/authorization/audit.interceptor';
 import type { Principal } from '../auth/authorization/principal';
 import { clearRefreshCookie } from '../auth/refresh-cookie';
+import { RateLimit } from '../../common/security/rate-limit.decorator';
 
 @Controller('users')
 @Roles(UserRole.ADMIN)
@@ -33,6 +34,7 @@ export class UsersController {
   }
 
   @Patch('me/password')
+  @RateLimit({ scope: 'password', limit: 5, seconds: 900 })
   @Authenticated()
   @Audit('password.change')
   async changePassword(

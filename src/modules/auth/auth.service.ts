@@ -9,12 +9,14 @@ import { LoginDto } from './dto/login-auth.dto';
 import { TokenService } from './jwt/token.service';
 import { JwtPayload } from './jwt/jwt.interface';
 import type { Principal } from './authorization/principal';
+import { RefreshSessionService } from '../../common/security/refresh-session.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly users: UsersService,
     private readonly tokens: TokenService,
+    private readonly sessions: RefreshSessionService,
   ) {}
 
   async create(dto: RegisterDto) {
@@ -45,15 +47,20 @@ export class AuthService {
     ) {
       throw new UnauthorizedException('Phiên đăng nhập không còn hợp lệ');
     }
-    return this.issueTokens(user);
+    return this.issueTokens(user, false, refreshToken);
   }
 
   async logout(user: Principal) {
     await this.users.rotateTokenVersion(user);
+    await this.sessions.revoke(user);
     return { message: 'Đăng xuất thành công' };
   }
 
-  private async issueTokens(user: User, login = false) {
+  private async issueTokens(
+    user: User,
+    login = false,
+    previousRefresh?: string,
+  ) {
     const payload: JwtPayload = {
       user_id: user.user_id,
       email: user.email,
@@ -63,7 +70,21 @@ export class AuthService {
     };
     // Sign first; a signing failure must not invalidate the current session.
     const tokens = await this.tokens.generateTokens(payload);
-    await this.users.rotateTokenVersion(user, login);
+    if (previousRefresh) await this.sessions.consume(user, previousRefresh);
+    await this.sessions.register(
+      payload,
+      tokens.refreshToken,
+      this.tokens.refreshLifetimeSeconds(),
+    );
+    try {
+      await this.users.rotateTokenVersion(user, login);
+    } catch (error) {
+      // Never remove another concurrent login's candidate; DB CAS picks the winner.
+      await this.sessions
+        .discard(payload, tokens.refreshToken)
+        .catch(() => undefined);
+      throw error;
+    }
     return { ...tokens, user: publicUser(user) };
   }
 }

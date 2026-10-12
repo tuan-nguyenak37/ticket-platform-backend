@@ -60,6 +60,20 @@ For containers, use the Redis service hostname and port 6379 inside the network.
 
 6. Restart the API and relevant business workers, then start a separate process:
 
+For local development, start the API (watch mode) and email worker together:
+
+```sh
+npm run start:all
+```
+
+Logs have `API`/`EMAIL` prefixes. Ctrl+C stops both; either process exiting also
+stops the other. PostgreSQL and Redis must already be running and email must be
+enabled/configured. Stop any existing API/email processes first to avoid port
+conflicts or duplicate workers. This command does not start the OCR worker or
+Docker services. Restart it after email worker code changes (only API watches).
+
+To run the email worker separately:
+
 ```sh
 npm run worker:email
 # Compiled deployment:

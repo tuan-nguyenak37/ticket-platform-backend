@@ -4,6 +4,10 @@
 
 Một tài khoản có một phiên hoạt động. Access token và refresh token dùng secret riêng, thuật toán HS256; payload có user_id, email, role, fullName, tokenVersion và tokenType. Token còn có thời hạn và định danh do bộ ký tạo.
 
+Refresh token còn phải có bản băm trong Redis và chỉ dùng được một lần. API dùng
+Redis để giới hạn request, trả 429 khi vượt ngưỡng và 503 khi Redis không sẵn sàng.
+Xem [bảo mật Redis](./security-redis.md) về cấu hình, giới hạn và triển khai.
+
 Role trong JWT không phải nguồn quyết định phân quyền. Mỗi request được bảo vệ tra lại user trong database và dùng role hiện tại. Request chỉ giữ principal gồm user_id, role, status, tokenVersion; không giữ password hash.
 
 | Thao tác | Ảnh hưởng phiên |
@@ -25,7 +29,8 @@ Việc cập nhật role/trạng thái qua API chưa được triển khai. Nế
 - Cookie được đọc qua cookie-parser; refresh token không nằm trong response JSON.
 - Logout và đổi mật khẩu xóa cookie bằng cùng path/options sau khi thao tác thành công.
 
-**Giới hạn hiện tại:** maxAge của cookie đang cố định 7 ngày, trong khi thời hạn JWT refresh có thể cấu hình bằng JWT_REFRESH_EXPIRES. Mặc định hai giá trị cùng là 7 ngày; nếu đổi cấu hình, cần đồng bộ maxAge trong code. Backend vẫn xác thực thời hạn của JWT, không tin thời hạn lưu cookie.
+Max-Age của cookie tự lấy từ JWT_REFRESH_EXPIRES, mặc định 7 ngày. Backend vẫn
+xác thực thời hạn JWT. Login/refresh trả Cache-Control: no-store.
 
 Đổi mật khẩu dùng route `/api/users/me/password`; cookie path /api/auth khiến browser không gửi cookie vào route này, nhưng response vẫn có thể xóa cookie bằng đúng path đã tạo.
 
@@ -46,6 +51,7 @@ Database cần cột `Users.tokenVersion`, integer NOT NULL DEFAULT 0. Khi DB_SY
 ## Tương thích
 
 - Token cũ thiếu claims mà bộ xác thực hiện tại yêu cầu cần được thay bằng đăng nhập lại.
+- Token refresh cấp trước khi triển khai Redis hoặc mất bản ghi Redis cần đăng nhập lại.
 - Refresh token không được nhận qua JSON body.
 - Sau refresh, bỏ access token cũ và dùng token mới; không chạy nhiều refresh song song.
 - Sau đổi mật khẩu, xóa access token phía client và chuyển về đăng nhập.

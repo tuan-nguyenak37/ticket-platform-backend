@@ -2,9 +2,14 @@ import { Test } from '@nestjs/testing';
 import { DiscoveryModule, DiscoveryService, Reflector } from '@nestjs/core';
 import { METHOD_METADATA } from '@nestjs/common/constants';
 import { resolvePolicy } from '../src/modules/auth/authorization/access-policy';
-import { INestApplication, Module } from '@nestjs/common';
+import {
+  Global,
+  INestApplication,
+  Module,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { FindOperator } from 'typeorm';
+import { DataSource, FindOperator } from 'typeorm';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
@@ -14,8 +19,24 @@ import { UserRole } from '../src/modules/users/entities/enums/user-role.enum';
 import { UserStatus } from '../src/modules/users/entities/enums/user-status.enum';
 import { hashPassword } from '../src/common/utils/password.util';
 import { configureApp } from '../src/configure-app';
+import { SecurityRedisService } from '../src/config/redis/security-redis.service';
+import { RateLimitService } from '../src/common/security/rate-limit.service';
+import { RefreshSessionService } from '../src/common/security/refresh-session.service';
 
-@Module({})
+@Global()
+@Module({
+  providers: [
+    {
+      provide: DataSource,
+      useValue: {
+        entityMetadatas: [],
+        options: { type: 'postgres' },
+        getRepository: () => ({}),
+      },
+    },
+  ],
+  exports: [DataSource],
+})
 class NoDatabaseModule {}
 
 interface Tokens {
@@ -52,6 +73,40 @@ function responseTokens(response: { body: unknown; headers: unknown }): Tokens {
 describe('Application HTTP flows (repository in memory)', () => {
   let app: INestApplication<App>;
   const rows = new Map<string, User>();
+  const refreshSessions = new Map<string, Set<string>>();
+  const sessionKey = (owner: { user_id: string; tokenVersion: number }) =>
+    `${owner.user_id}:${owner.tokenVersion}`;
+  const sessions = {
+    register: (
+      owner: { user_id: string; tokenVersion: number },
+      token: string,
+    ) => {
+      const key = sessionKey(owner);
+      const values = refreshSessions.get(key) ?? new Set<string>();
+      values.add(token);
+      refreshSessions.set(key, values);
+      return Promise.resolve();
+    },
+    consume: (
+      owner: { user_id: string; tokenVersion: number },
+      token: string,
+    ) => {
+      if (!refreshSessions.get(sessionKey(owner))?.delete(token))
+        return Promise.reject(new UnauthorizedException());
+      return Promise.resolve();
+    },
+    discard: (
+      owner: { user_id: string; tokenVersion: number },
+      token: string,
+    ) => {
+      refreshSessions.get(sessionKey(owner))?.delete(token);
+      return Promise.resolve();
+    },
+    revoke: (owner: { user_id: string; tokenVersion: number }) => {
+      refreshSessions.delete(sessionKey(owner));
+      return Promise.resolve();
+    },
+  };
   const repository = {
     create: (data: Partial<User>) =>
       Object.assign(
@@ -112,13 +167,24 @@ describe('Application HTTP flows (repository in memory)', () => {
       .useModule(NoDatabaseModule)
       .overrideProvider(getRepositoryToken(User))
       .useValue(repository)
+      .overrideProvider(SecurityRedisService)
+      .useValue({})
+      .overrideProvider(RateLimitService)
+      .useValue({
+        check: () => Promise.resolve({ allowed: true, retryAfter: 60 }),
+      })
+      .overrideProvider(RefreshSessionService)
+      .useValue(sessions)
       .compile();
     app = module.createNestApplication();
     configureApp(app);
     await app.init();
   });
 
-  beforeEach(() => rows.clear());
+  beforeEach(() => {
+    rows.clear();
+    refreshSessions.clear();
+  });
   afterAll(async () => {
     await app?.close();
   });
