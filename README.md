@@ -1,14 +1,14 @@
 # TicketVerse Backend
 
 Nền tảng API NestJS của TicketVerse với cấu hình môi trường, kết nối PostgreSQL
-và mô hình người dùng.
-Chưa bao gồm xác thực, sự kiện, đặt vé, VNPay hoặc bán lại vé.
+và mô hình người dùng, Redis và kho lưu phiên refresh.
+Chưa bao gồm API xác thực, sự kiện, đặt vé, VNPay hoặc bán lại vé.
 
 ## Yêu cầu
 
 - Node.js 22.13 trở lên và npm 10 trở lên.
 - PostgreSQL đang chạy và một database đã tạo cho ứng dụng.
-- Chưa cần Redis hoặc dịch vụ thanh toán.
+- Redis dành cho bảo mật; chưa cần dịch vụ thanh toán.
 
 ## Cài đặt và chạy
 
@@ -57,6 +57,38 @@ hoặc kiểm tra Origin/CSRF cho các nghiệp vụ nhạy cảm.
 - Không tự chạy migration khi server khởi động. Chạy migration bằng lệnh riêng.
 - Thử kết nối tối đa 3 lần, cách nhau 1 giây; lỗi kết nối làm khởi động thất bại.
 - Không dùng tài khoản superuser cho ứng dụng và không commit `.env`.
+
+## Redis và kho phiên refresh
+
+- `SECURITY_REDIS_URL` mặc định `redis://127.0.0.1:6379/1`; hỗ trợ `rediss://`
+  để bật TLS. URL chứa thông tin đăng nhập chỉ đặt trong cấu hình riêng.
+- `SECURITY_REDIS_PREFIX` mặc định `ticketverse-security`, chỉ gồm chữ, số,
+  dấu gạch ngang/gạch dưới, dài 1–60 ký tự.
+- `JWT_ACCESS_SECRET` bắt buộc, production tối thiểu 32 ký tự. Thay giá trị mẫu
+  bằng chuỗi ngẫu nhiên riêng; ở commit này dùng làm khóa HMAC che ID trong key
+  Redis. Chưa phát hành hoặc xác minh JWT.
+- Kết nối lúc khởi động được giới hạn 10 giây và phải nhận `PONG`. Redis lỗi
+  làm khởi động thất bại; lỗi thao tác trả 503, không tự coi phiên là hợp lệ.
+- Tắt hàng đợi lệnh offline; mỗi lệnh có timeout 3 giây và giới hạn retry.
+  Chỉ ghi mã lỗi vận hành, không ghi URL, token hoặc Redis credentials vào log.
+
+`RefreshSessionService` nhận định danh người dùng, session ID và TTL từ mã gọi
+đáng tin cậy. Redis chỉ lưu SHA-256 của refresh token cùng deadline, không lưu
+token nguyên bản. Key được che ID bằng HMAC. Lua so khớp hash và thay thế nguyên
+tử, dùng thời gian Redis; request lặp nhận `409 AUTH_REFRESH_CONFLICT`, còn
+phiên hết hạn/bị thu hồi nhận 401. Token mới phải khác token cũ, TTL phải là số
+nguyên dương và xoay token không vượt deadline ban đầu. Có thu hồi một phiên
+hoặc toàn bộ phiên của người dùng.
+
+Kho phiên không xác minh chữ ký JWT hoặc trạng thái tài khoản, không quản lý
+cookie và không cung cấp HTTP endpoint. API xác thực ở commit tiếp theo phải
+xác minh JWT, chủ sở hữu, trạng thái tài khoản và tuổi phiên trước khi gọi kho;
+mỗi lần đăng nhập phải sinh session ID mới. Mất dữ liệu Redis sẽ thu hồi phiên;
+production cần cấu hình persistence, TLS/ACL và tránh eviction cho kho bảo mật.
+Đổi `JWT_ACCESS_SECRET` cũng làm các key phiên cũ không còn truy cập được.
+
+Các bài kiểm tra mock chỉ kiểm tra ánh xạ kết quả và validation; không thay thế
+nghiệm thu Lua đồng thời bằng Redis thật. Chưa chạy test trong đợt commit này.
 
 ## Người dùng và migration ban đầu
 
@@ -116,6 +148,7 @@ $env:DB_PORT = '5432'
 $env:DB_USERNAME = 'ticketverse'
 $env:DB_PASSWORD = 'your-local-test-password'
 $env:DB_NAME = 'ticketverse_test'
+$env:JWT_ACCESS_SECRET = 'local-test-key-not-a-real-deployment-secret'
 $env:RUN_DATABASE_TESTS = 'true'
 npm test -- --runInBand
 ```

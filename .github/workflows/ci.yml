@@ -35,6 +35,7 @@ jobs:
       DB_PASSWORD: ci-only-password
       DB_NAME: ticketverse_test
       RUN_DATABASE_TESTS: 'true'
+      JWT_ACCESS_SECRET: ci-only-key-not-a-real-deployment-secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -7,6 +7,7 @@ describe('Environment validation', () => {
     DB_USERNAME: 'ticketverse',
     DB_PASSWORD: 'test-password',
     DB_NAME: 'ticketverse_test',
+    JWT_ACCESS_SECRET: 'unit-test-key-not-a-real-deployment-secret',
   };
 
   it('provides application and database defaults', () => {
@@ -36,16 +37,19 @@ describe('Environment validation', () => {
     });
   });
 
-  it.each(['DB_HOST', 'DB_USERNAME', 'DB_PASSWORD', 'DB_NAME'])(
-    'rejects missing %s',
-    (key) => {
-      const environment: Record<string, unknown> = { ...databaseEnvironment };
-      delete environment[key];
-      expect(environmentSchema.validate(environment).error?.message).toContain(
-        key,
-      );
-    },
-  );
+  it.each([
+    'DB_HOST',
+    'DB_USERNAME',
+    'DB_PASSWORD',
+    'DB_NAME',
+    'JWT_ACCESS_SECRET',
+  ])('rejects missing %s', (key) => {
+    const environment: Record<string, unknown> = { ...databaseEnvironment };
+    delete environment[key];
+    expect(environmentSchema.validate(environment).error?.message).toContain(
+      key,
+    );
+  });
 
   it.each([
     ['PORT', 'not-a-number'],
@@ -60,6 +64,10 @@ describe('Environment validation', () => {
     ['DB_PASSWORD', ''],
     ['DB_NAME', ''],
     ['NODE_ENV', 'invalid'],
+    ['SECURITY_REDIS_URL', 'https://redis.example'],
+    ['SECURITY_REDIS_URL', 'redis://localhost:6379/not-a-database'],
+    ['SECURITY_REDIS_URL', 'redis://localhost:6379/1?password=private'],
+    ['SECURITY_REDIS_PREFIX', 'invalid:prefix'],
     ['FRONTEND_URL', '*'],
     ['FRONTEND_URL', 'https://example.com/path'],
     ['FRONTEND_URL', 'https://user:password@example.com'],
