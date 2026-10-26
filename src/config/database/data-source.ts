@@ -16,6 +16,8 @@ import { TicketInventory } from '../../modules/events/ticket-types/entities/tick
 import { TicketTypesInventory1791888003000 } from '../../database/migrations/1791888003000-TicketTypesInventory';
 import { EventReviewLog } from '../../modules/events/entities/event-review-log.entity';
 import { EventRegistrationDiscounts1792454402100 } from '../../database/migrations/1792454402100-EventRegistrationDiscounts';
+import { OrganizerPayoutAccount } from '../../modules/organizers/entities/organizer-payout-account.entity';
+import { OrganizerPayoutAccount1791888008000 } from '../../database/migrations/1791888008000-OrganizerPayoutAccount';
 import { envValidationSchema } from '../env.validation';
 import { validateEnvironment } from '../validate-environment';
 import { databaseConnectionOptions } from './database.options';
@@ -37,6 +39,7 @@ export const dataSource = new DataSource({
     TicketType,
     TicketInventory,
     EventReviewLog,
+    OrganizerPayoutAccount,
   ],
   migrations: [
     BaselineUsersOrganizers1791888000000,
@@ -45,6 +48,7 @@ export const dataSource = new DataSource({
     TicketTypesInventory1791888003000,
     AdminRoleChanges1792454403000,
     EventRegistrationDiscounts1792454402100,
+    OrganizerPayoutAccount1791888008000,
   ],
   migrationsTransactionMode: 'all',
 });

@@ -2,11 +2,18 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Organizer } from './entities/organizer.entity';
 import { OrganizerMember } from './entities/organizer-member.entity';
+import { OrganizerPayoutAccount } from './entities/organizer-payout-account.entity';
 import { OrganizersController } from './organizers.controller';
 import { OrganizersService } from './organizers.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Organizer, OrganizerMember])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Organizer,
+      OrganizerMember,
+      OrganizerPayoutAccount,
+    ]),
+  ],
   controllers: [OrganizersController],
   providers: [OrganizersService],
   exports: [OrganizersService],
