@@ -27,6 +27,8 @@ export const environmentSchema = Joi.object({
   DB_PASSWORD: Joi.string().required(),
   DB_NAME: Joi.string().trim().required(),
   DB_SYNCHRONIZE: Joi.boolean().valid(false).default(false),
+  UPLOAD_DIR: Joi.string().trim().min(1).default('uploads'),
+  UPLOAD_MAX_FILE_SIZE_MB: Joi.number().integer().min(1).max(50).default(10),
 })
   .concat(securityEnvironmentSchema)
   .concat(authEnvironmentSchema);
