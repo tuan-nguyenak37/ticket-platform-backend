@@ -1,41 +1,48 @@
-# Backend documentation
+# Tài liệu backend
 
-These documents describe the curated backend Git snapshot. They supersede local
-legacy API exports, hand-written SQL patches and old verification reports.
+Tài liệu bên dưới mô tả snapshot backend được quản lý trong Git, thay cho các
+API export, SQL thủ công và báo cáo legacy còn nằm cục bộ. Bắt đầu từ
+[README](../README.md) để cấu hình và chạy dự án.
 
-## Identity and governance
+## Người dùng và quản trị
 
-- [Profile API](profile-api.md)
-- [User administration](user-administration.md)
-- [User role changes](user-role-changes.md)
-- [Organizer profiles](organizer-profiles.md)
-- [Organizer receiving account](organizer-payout-account.md)
-- [Administrative statistics](admin-statistics.md)
+- [Xác thực JWT và refresh token](authentication.md)
+- [Hồ sơ cá nhân](profile-api.md)
+- [Quản trị người dùng](user-administration.md)
+- [Thay đổi vai trò](user-role-changes.md)
+- [Hồ sơ Organizer](organizer-profiles.md)
+- [Tài khoản nhận tiền Organizer](organizer-payout-account.md)
+- [Thống kê Admin](admin-statistics.md)
 
-JWT/browser-cookie behavior is documented in the root README. Refresh tokens
-are HttpOnly, one-use and rotated atomically through Redis; access JWTs use Bearer.
+JWT, refresh cookie một lần và SSR được mô tả trong tài liệu xác thực.
+Refresh token không dùng để xác thực API nghiệp vụ.
 
-## Events and commerce
+## Sự kiện và giao dịch
 
-- [Events](event-management.md), [showings](showing-management.md),
-  [ticket tiers/inventory](ticket-tier-management.md), [images](event-image-uploads.md)
-- [Review workflow](event-review-workflow.md), [discounts](event-discounts.md)
-- [Reservations](order-reservations.md), [verified settlement](order-settlement.md)
-- [Payment primitives](payment-processing.md), [VNPay integration](vnpay-integration.md)
-- [Ticket issuance](ticket-issuance.md), [PDF/QR/email delivery](ticket-delivery.md)
-- [Owner-only ticket check-in](ticket-check-in.md)
-- [Resale](resale-v2.md), [storage compatibility](resale-storage.md),
-  [seller payouts](automatic-payouts.md)
-- [Organizer sales reports](organizer-sales-reports.md)
-- [Web notifications](web-notifications.md)
+- [Sự kiện](event-management.md), [suất diễn](showing-management.md),
+  [hạng vé/tồn kho](ticket-tier-management.md), [ảnh sự kiện](event-image-uploads.md)
+- [Duyệt sự kiện](event-review-workflow.md), [giảm giá](event-discounts.md)
+- [Giữ vé](order-reservations.md), [chốt giao dịch](order-settlement.md)
+- [Xử lý bằng chứng thanh toán](payment-processing.md), [VNPay](vnpay-integration.md)
+- [Phát hành vé](ticket-issuance.md), [QR/PDF/email](ticket-delivery.md)
+- [Check-in theo suất diễn](ticket-check-in.md)
+- [Danh sách khách và xuất CSV](event-attendees.md)
+- [Bán lại](resale-v2.md), [schema tương thích](resale-storage.md),
+  [chi trả người bán](automatic-payouts.md)
+- [Báo cáo bán vé Organizer](organizer-sales-reports.md)
+- [Thông báo trong web](web-notifications.md)
 
-## Development and release
+## Phát triển và vận hành
 
-- [Category catalog](category-catalog.md)
-- [Release checklist](release-checklist.md)
-- [Source scope and excluded local artifacts](source-scope.md)
-- [Verification status](verification-status.md)
+- [Danh mục sự kiện phát triển](category-catalog.md)
+- [Hướng dẫn đóng góp](../CONTRIBUTING.md)
+- [Quy trình Git và thiết lập GitHub](git-workflow.md)
+- [Chính sách bảo mật](../SECURITY.md)
+- [Checklist phát hành](release-checklist.md)
+- [Phạm vi mã nguồn và artifact bị loại](source-scope.md)
+- [Trạng thái kiểm chứng](verification-status.md)
+- [Rà soát và đồng bộ mã local](local-reconciliation.md)
 
-The payment-foundation document is an earlier implementation scope, not an
-assertion that the final snapshot lacks provider integration. No historical
-test result should be treated as acceptance of the current tree.
+`payment-foundation.md` ghi lại bước nền tảng trước tích hợp nhà cung cấp, không
+phải kết luận snapshot cuối chưa có VNPay. Báo cáo kiểm thử lịch sử không chứng
+minh mã hiện tại đã nghiệm thu. Không chạy SQL/script legacy để thiết lập schema.
