@@ -1,0 +1,30 @@
+name: Đề xuất chức năng backend
+description: Mô tả nhu cầu nghiệp vụ và tiêu chí nghiệm thu.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Vấn đề cần giải quyết
+      description: Ai sử dụng và hiện đang gặp trở ngại gì?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Phạm vi và ngoài phạm vi
+      description: Nêu API, vai trò sử dụng và thay đổi nghiệp vụ dự kiến.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Tiêu chí nghiệm thu
+      description: Bao gồm trạng thái lỗi, quyền truy cập và dữ liệu cũ nếu có.
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Rủi ro và phụ thuộc
+      description: Migration, dịch vụ ngoài, thanh toán hoặc dữ liệu cá nhân.

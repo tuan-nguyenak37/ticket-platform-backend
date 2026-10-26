@@ -47,7 +47,7 @@ desktop.ini
 .tmp
 .cache
 /.venv-ticket-scanner/
-/.runtime/ticket-ocr/
+/.runtime/
 __pycache__/
 .eslintcache
 
@@ -63,5 +63,23 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 # Local exports, third-party snapshots and machine-specific tooling
 /docs/postman/Backend - FE Demo.environment.yaml
 /docs/postman/postman/globals/
-/data/ticketbox/
+/data/
 /skills-lock.json
+
+# Local certificates, private keys and exported credentials
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.postman_environment.json
+*.postman_globals.json
+!*.example.postman_environment.json
+
+# Database backups and generated local exports (not SQL migrations)
+/backups/
+/dumps/
+/exports/
+*.dump
+*.backup
+*.tsbuildinfo

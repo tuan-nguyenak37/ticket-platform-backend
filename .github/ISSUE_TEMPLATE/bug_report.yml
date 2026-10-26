@@ -1,0 +1,41 @@
+name: Báo lỗi backend
+description: Lỗi API hoặc nghiệp vụ, dùng dữ liệu giả đã che thông tin.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Không gửi secret, token, cookie, thông tin ngân hàng hoặc dữ liệu thẻ.
+        Lỗ hổng bảo mật phải được báo riêng theo SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Commit và môi trường
+      placeholder: Commit SHA, phiên bản Node.js, development hoặc test
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Các bước tái hiện
+      description: Dùng endpoint và dữ liệu giả; không dán header xác thực.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Kết quả mong đợi
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Kết quả thực tế
+      description: Mã HTTP, mã lỗi, request ID nếu có; che dữ liệu nhạy cảm.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Phạm vi ảnh hưởng và kiểm chứng đã thực hiện
+      description: Nêu ảnh hưởng dữ liệu/đơn/vé nếu có, không thử trên dữ liệu thật.
