@@ -9,6 +9,7 @@ import {
   IsIn,
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Matches,
   Max,
@@ -87,4 +88,15 @@ export class DiscountStatusDto {
 export class DiscountParamsDto extends EventIdDto {
   @Matches(/^[A-Z0-9_-]{3,32}$/)
   code!: string;
+}
+
+export class AttendeesQueryDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(1_000_000)
+  page = 1;
+  @IsOptional()
+  @Matches(/^[a-zA-Z0-9_-]{1,40}$/)
+  showingId?: string;
 }
