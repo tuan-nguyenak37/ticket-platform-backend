@@ -24,12 +24,16 @@ import { UserRole } from '../users/enums/user-role.enum';
 import {
   CreateEventDto,
   EventListQueryDto,
+  EventReviewHistoryQueryDto,
   UpdateEventDto,
 } from './dto/event.dto';
 import { EventCategory } from './entities/event-category.entity';
+import { EventReviewLog } from './entities/event-review-log.entity';
 import { Event } from './entities/event.entity';
+import { EventReviewAction } from './enums/event-review-action.enum';
 import { EventStatus } from './enums/event-status.enum';
 import { Showing } from './showings/entities/showing.entity';
+import { evaluateReadiness } from './event-readiness';
 import { UploadsService } from '../../common/uploads/uploads.service';
 
 @Injectable()
@@ -131,6 +135,79 @@ export class EventsService {
     return this.paginate(builder, query, (event) =>
       this.managementResponse(event),
     );
+  }
+
+  async listForModeration(query: EventListQueryDto) {
+    const builder = this.events
+      .createQueryBuilder('event')
+      .where('event.status = :status', { status: EventStatus.PENDING_REVIEW });
+    if (query.categoryId) {
+      builder.andWhere('event.categoryId = :categoryId', {
+        categoryId: query.categoryId,
+      });
+    }
+    if (query.q) {
+      builder.andWhere("event.title ILIKE :title ESCAPE '\\'", {
+        title: `%${query.q.replace(/[\\%_]/g, '\\$&')}%`,
+      });
+    }
+    return this.paginate(builder, query, (event) =>
+      this.managementResponse(event),
+    );
+  }
+
+  async findForModeration(eventId: string, actor: Principal) {
+    if (![UserRole.ADMIN, UserRole.MODERATOR].includes(actor.role))
+      throw new ForbiddenException('Only moderators can access moderation');
+    const event = await this.events.findOne({
+      where: { eventId },
+      relations: { organizer: true },
+    });
+    if (!event) throw new NotFoundException('Event not found');
+    return {
+      ...this.managementResponse(event),
+      organizer: {
+        organizerId: event.organizer.organizerId,
+        name: event.organizer.name,
+        status: event.organizer.status,
+      },
+      isOwnEvent: await this.isOwner(event.organizerId, actor.user_id),
+    };
+  }
+
+  async reviewHistory(query: EventReviewHistoryQueryDto) {
+    const builder = this.dataSource
+      .getRepository(EventReviewLog)
+      .createQueryBuilder('review')
+      .leftJoin('review.event', 'event')
+      .addSelect(['event.eventId', 'event.title'])
+      .leftJoin('review.moderator', 'moderator')
+      .addSelect(['moderator.user_id', 'moderator.full_name']);
+    if (query.eventId)
+      builder.andWhere('review.eventId = :eventId', { eventId: query.eventId });
+    if (query.action)
+      builder.andWhere('review.action = :action', { action: query.action });
+    const [reviews, total] = await builder
+      .orderBy('review.createdAt', 'DESC')
+      .addOrderBy('review.reviewId', 'DESC')
+      .skip((query.page - 1) * query.limit)
+      .take(query.limit)
+      .getManyAndCount();
+    return {
+      items: reviews.map((review) => ({
+        reviewId: review.reviewId,
+        eventId: review.eventId,
+        eventTitle: review.event?.title ?? null,
+        moderatorId: review.moderatorId,
+        moderatorName: review.moderator?.full_name ?? null,
+        action: review.action,
+        reason: review.reason,
+        createdAt: review.createdAt,
+      })),
+      total,
+      page: query.page,
+      limit: query.limit,
+    };
   }
 
   async findOne(eventId: string, actor?: Principal) {
@@ -286,6 +363,109 @@ export class EventsService {
     if (event.posterUrl !== '/api/v1/events/' + eventId + '/poster/' + filename)
       throw new NotFoundException('Image not found');
     return this.uploads.readEventImage(filename);
+  }
+
+  async readiness(eventId: string, actor: Principal) {
+    return this.withLockedEvent(eventId, async (manager, organizer, event) => {
+      await this.requireOwner(manager, organizer.organizerId, actor.user_id);
+      return this.checkReadiness(manager, event);
+    });
+  }
+
+  private async checkReadiness(manager: EntityManager, event: Event) {
+    const showings = await manager.getRepository(Showing).find({
+      where: { eventId: event.eventId },
+      relations: { ticketTypes: { inventory: true } },
+    });
+    return evaluateReadiness(event, showings, new Date());
+  }
+
+  private async requireReady(manager: EntityManager, event: Event) {
+    const result = await this.checkReadiness(manager, event);
+    if (!result.ready)
+      throw new BadRequestException({
+        message: 'Event is not ready for review',
+        issues: result.issues,
+      });
+  }
+
+  async submit(eventId: string, actor: Principal) {
+    return this.withLockedEvent(eventId, async (manager, organizer, event) => {
+      await this.requireOwner(manager, organizer.organizerId, actor.user_id);
+      this.requireActive(organizer);
+      if (event.status !== EventStatus.DRAFT)
+        throw new ConflictException('Event must be a draft');
+      if (!event.description?.trim())
+        throw new BadRequestException('Description is required for review');
+      await this.requireReady(manager, event);
+      event.status = EventStatus.PENDING_REVIEW;
+      event.rejectionReason = null;
+      event.reviewedBy = null;
+      event.reviewedAt = null;
+      return this.managementResponse(await manager.save(Event, event));
+    });
+  }
+
+  async review(
+    eventId: string,
+    actor: Principal,
+    action: EventReviewAction,
+    reason: string | null,
+  ) {
+    if (![UserRole.ADMIN, UserRole.MODERATOR].includes(actor.role))
+      throw new ForbiddenException('Only moderators can review events');
+    if (!Object.values(EventReviewAction).includes(action))
+      throw new BadRequestException('Invalid review action');
+    reason =
+      action === EventReviewAction.REJECTED && typeof reason === 'string'
+        ? reason.trim()
+        : null;
+    if (
+      action === EventReviewAction.REJECTED &&
+      (!reason || Array.from(reason).length > 2000)
+    )
+      throw new BadRequestException(
+        'Rejection reason must be 1-2000 characters',
+      );
+    return this.withLockedEvent(eventId, async (manager, organizer, event) => {
+      if (event.status !== EventStatus.PENDING_REVIEW) {
+        throw new ConflictException('Event is not pending review');
+      }
+      const isOwner = await manager.getRepository(OrganizerMember).existsBy({
+        organizerId: organizer.organizerId,
+        userId: actor.user_id,
+        role: OrganizerMemberRole.OWNER,
+      });
+      if (isOwner) {
+        throw new ForbiddenException(
+          'Moderators cannot review their own events',
+        );
+      }
+      if (action === EventReviewAction.APPROVED) {
+        this.requireActive(organizer);
+        await this.requireReady(manager, event);
+      }
+      event.status =
+        action === EventReviewAction.APPROVED
+          ? EventStatus.PUBLISHED
+          : EventStatus.REJECTED;
+      event.rejectionReason = reason;
+      event.reviewedBy = actor.user_id;
+      event.reviewedAt = new Date();
+      const reviewId = generateId('review');
+      await manager.save(Event, event);
+      await manager.save(
+        EventReviewLog,
+        manager.create(EventReviewLog, {
+          reviewId,
+          eventId,
+          moderatorId: actor.user_id,
+          action,
+          reason,
+        }),
+      );
+      return this.managementResponse(event);
+    });
   }
 
   private async withLockedEvent<T>(

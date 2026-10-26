@@ -22,6 +22,8 @@ import {
   TicketTypesController,
 } from './ticket-types/ticket-types.controller';
 import { TicketTypesService } from './ticket-types/ticket-types.service';
+import { EventModerationController } from './events.controller';
+import { EventReviewLog } from './entities/event-review-log.entity';
 
 @Module({
   imports: [
@@ -33,6 +35,7 @@ import { TicketTypesService } from './ticket-types/ticket-types.service';
       Showing,
       TicketType,
       TicketInventory,
+      EventReviewLog,
     ]),
   ],
   controllers: [
@@ -42,6 +45,7 @@ import { TicketTypesService } from './ticket-types/ticket-types.service';
     ShowingsController,
     ShowingTicketTypesController,
     TicketTypesController,
+    EventModerationController,
   ],
   providers: [EventsService, ShowingsService, TicketTypesService],
 })

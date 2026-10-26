@@ -1,5 +1,7 @@
 import { Transform, Type } from 'class-transformer';
+import { EventReviewAction } from '../enums/event-review-action.enum';
 import {
+  IsEnum,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -78,6 +80,16 @@ export class UpdateEventDto {
   posterUrl?: string | null;
 }
 
+export class RejectEventDto {
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  reason!: string;
+}
+
 export class EventListQueryDto {
   @Type(() => Number)
   @IsOptional()
@@ -104,4 +116,28 @@ export class EventListQueryDto {
   @IsString()
   @Matches(/^[a-zA-Z0-9_-]{1,40}$/)
   categoryId?: string;
+}
+
+export class EventReviewHistoryQueryDto {
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  page: number = 1;
+
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit: number = 20;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-zA-Z0-9_-]{1,40}$/)
+  eventId?: string;
+
+  @IsOptional()
+  @IsEnum(EventReviewAction)
+  action?: EventReviewAction;
 }

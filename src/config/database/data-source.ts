@@ -14,6 +14,7 @@ import { Showings1791888002000 } from '../../database/migrations/1791888002000-S
 import { TicketType } from '../../modules/events/ticket-types/entities/ticket-type.entity';
 import { TicketInventory } from '../../modules/events/ticket-types/entities/ticket-inventory.entity';
 import { TicketTypesInventory1791888003000 } from '../../database/migrations/1791888003000-TicketTypesInventory';
+import { EventReviewLog } from '../../modules/events/entities/event-review-log.entity';
 import { envValidationSchema } from '../env.validation';
 import { validateEnvironment } from '../validate-environment';
 import { databaseConnectionOptions } from './database.options';
@@ -34,6 +35,7 @@ export const dataSource = new DataSource({
     Showing,
     TicketType,
     TicketInventory,
+    EventReviewLog,
   ],
   migrations: [
     BaselineUsersOrganizers1791888000000,
