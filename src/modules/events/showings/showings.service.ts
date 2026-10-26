@@ -25,6 +25,7 @@ import { CreateShowingDto } from './dto/create-showing.dto';
 import { UpdateShowingDto } from './dto/update-showing.dto';
 import { Showing } from './entities/showing.entity';
 import { parseVietnamTime } from './showing-time';
+import { TicketType } from '../ticket-types/entities/ticket-type.entity';
 
 @Injectable()
 export class ShowingsService {
@@ -131,6 +132,18 @@ export class ShowingsService {
           startTime.getTime() !== showing.startTime.getTime() ||
           endTime.getTime() !== showing.endTime.getTime();
         this.requireTimeRange(startTime, endTime, timeChanged);
+        if (startTime.getTime() !== showing.startTime.getTime()) {
+          const conflictingSales = await manager
+            .getRepository(TicketType)
+            .createQueryBuilder('ticketType')
+            .where('ticketType.showingId = :showingId', { showingId })
+            .andWhere('ticketType.saleEndAt > :startTime', { startTime })
+            .getExists();
+          if (conflictingSales)
+            throw new ConflictException(
+              'Showing starts before a ticket type sale ends',
+            );
+        }
         const name = dto.name ?? showing.name;
         const venueName = dto.venueName ?? showing.venueName;
         const address = dto.address ?? showing.address;

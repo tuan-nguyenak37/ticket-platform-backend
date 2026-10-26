@@ -80,14 +80,25 @@ export class EventsService {
       ? await this.dataSource
           .getRepository(Showing)
           .createQueryBuilder('showing')
+          .leftJoin(
+            'showing.ticketTypes',
+            'ticketType',
+            'ticketType.status = :active',
+            { active: 'ACTIVE' },
+          )
           .select('showing.eventId', 'eventId')
           .addSelect('MIN(showing.startTime)', 'nextShowingAt')
+          .addSelect('MIN(ticketType.price)::text', 'minPrice')
           .where('showing.eventId IN (:...eventIds)', {
             eventIds: events.map((event) => event.eventId),
           })
           .andWhere('showing.startTime > CURRENT_TIMESTAMP')
           .groupBy('showing.eventId')
-          .getRawMany<{ eventId: string; nextShowingAt: Date }>()
+          .getRawMany<{
+            eventId: string;
+            nextShowingAt: Date;
+            minPrice: string | null;
+          }>()
       : [];
     const byEvent = new Map(
       summaries.map((summary) => [summary.eventId, summary]),
@@ -96,6 +107,7 @@ export class EventsService {
       items: events.map((event) => ({
         ...this.publicResponse(event),
         nextShowingAt: byEvent.get(event.eventId)?.nextShowingAt ?? null,
+        minPrice: byEvent.get(event.eventId)?.minPrice ?? null,
       })),
       total,
       page: query.page,
