@@ -4,6 +4,8 @@ import { DataSource } from 'typeorm';
 import { BaselineUsersOrganizers1791888000000 } from '../../database/migrations/1791888000000-BaselineUsersOrganizers';
 import { AdminRoleChanges1792454403000 } from '../../database/migrations/1792454403000-AdminRoleChanges';
 import { User } from '../../modules/users/entities/user.entity';
+import { Organizer } from '../../modules/organizers/entities/organizer.entity';
+import { OrganizerMember } from '../../modules/organizers/entities/organizer-member.entity';
 import { envValidationSchema } from '../env.validation';
 import { validateEnvironment } from '../validate-environment';
 import { databaseConnectionOptions } from './database.options';
@@ -15,7 +17,7 @@ const config = new ConfigService(
 
 export const dataSource = new DataSource({
   ...databaseConnectionOptions(config),
-  entities: [User],
+  entities: [User, Organizer, OrganizerMember],
   migrations: [
     BaselineUsersOrganizers1791888000000,
     AdminRoleChanges1792454403000,

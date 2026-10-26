@@ -242,7 +242,7 @@ npm run start:prod
 ## Cấu trúc
 
 - `src/main.ts`: đọc môi trường và khởi chạy HTTP server với prefix `/api`.
-- `src/app.module.ts`: module gốc, chưa nối module nghiệp vụ.
+- `src/app.module.ts`: kết nối cấu hình, bảo mật, Users, Auth và Organizers.
 - `src/app.controller.ts`, `src/app.service.ts`: endpoint kiểm tra ứng dụng.
 - `src/app.controller.spec.ts`: kiểm tra service, HTTP thành công và 404.
 - `src/config/`: validation môi trường và module cấu hình dùng chung.
@@ -250,6 +250,7 @@ npm run start:prod
 - `src/database/`: baseline, migration nhật ký đổi vai trò và chương trình chạy migration.
 - `src/modules/users/`: mô hình người dùng, service nội bộ và hồ sơ chính mình.
 - `src/modules/auth/`: JWT, cookie, đăng ký/đăng nhập và các guard.
+- `src/modules/organizers/`: hồ sơ ban tổ chức và quyền sở hữu; xem `docs/organizer-profiles.md`.
 - `src/common/`: validation HTTP, CORS, filter lỗi và interceptor phản hồi.
 - `.env.example`: cấu hình mẫu; không commit `.env` hoặc secrets.
 

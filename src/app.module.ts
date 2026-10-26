@@ -7,6 +7,7 @@ import { CoreModule } from './common/core.module';
 import { UsersModule } from './modules/users/users.module';
 import { SecurityModule } from './common/security/security.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { OrganizersModule } from './modules/organizers/organizers.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { AuthModule } from './modules/auth/auth.module';
     UsersModule,
     SecurityModule,
     AuthModule,
+    OrganizersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
