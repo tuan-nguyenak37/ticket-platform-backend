@@ -39,6 +39,7 @@ export const environmentSchema = Joi.object({
     .min(32)
     .invalid(Joi.ref('JWT_ACCESS_SECRET'), Joi.ref('JWT_REFRESH_SECRET'))
     .required(),
+  RESALE_SETTLEMENT_WORKER_ENABLED: Joi.boolean().default(true),
   TICKET_EMAIL_ENABLED: Joi.boolean().default(false),
   SMTP_HOST: Joi.when('TICKET_EMAIL_ENABLED', {
     is: true,
