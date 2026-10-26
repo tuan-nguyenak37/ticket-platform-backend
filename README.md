@@ -2,16 +2,18 @@
 
 Nền tảng API NestJS của TicketVerse với cấu hình môi trường, kết nối PostgreSQL
 và mô hình người dùng, Redis và kho lưu phiên refresh.
-Bao gồm xác thực JWT, hồ sơ cá nhân, quản lý người dùng, Organizer, sự kiện,
-đơn hàng, giữ vé và nền tảng phát hành vé. Chưa tích hợp VNPay, bán lại vé hoặc
-thống kê quản trị trong lịch sử này. Có đổi vai trò USER/MODERATOR với nhật ký
-bền vững và thu hồi phiên.
+Bao gồm xác thực JWT và refresh một lần, hồ sơ cá nhân, quản trị người dùng,
+Organizer, sự kiện và kiểm duyệt, đặt/giữ vé, VNPay, vé PDF/QR, bán lại vé,
+chi trả mô phỏng, thông báo trong web và thống kê tổng thu. Bản tích hợp hiện
+tại dùng cổng thử của VNPay; chưa có dịch vụ chuyển tiền thật cho người bán.
 
 ## Yêu cầu
 
 - Node.js 22.13 trở lên và npm 10 trở lên.
 - PostgreSQL đang chạy và một database đã tạo cho ứng dụng.
-- Redis dành cho bảo mật; chưa cần dịch vụ thanh toán.
+- Redis dành cho phiên refresh và giới hạn tần suất.
+- SMTP nếu bật email; thông tin Merchant riêng nếu sử dụng VNPay.
+- Khóa JWT và QR riêng biệt; không dùng các giá trị mẫu khi triển khai.
 
 ## Cài đặt và chạy
 
@@ -20,7 +22,12 @@ npm ci
 Copy-Item .env.example .env
 ```
 
-Sửa thông tin kết nối trong `.env` theo PostgreSQL của bạn trước khi chạy:
+Sửa kết nối PostgreSQL, Redis và các khóa JWT/QR trong `.env`.
+Xem [danh mục tài liệu](docs/README.md) và [kiểm tra triển khai](docs/release-checklist.md).
+Không tự chạy migration khi khởi động. Rà soát database đích và chạy migration
+bằng lệnh riêng trước khi bật các API nghiệp vụ; không dùng SQL legacy.
+
+Sau khi cấu hình và migration đã sẵn sàng:
 
 ```powershell
 npm run start:dev
@@ -33,7 +40,8 @@ endpoint này không thực hiện kiểm tra sức khỏe database theo từng 
 
 ## Quy ước HTTP/API
 
-- API dùng prefix `/api`; gồm xác thực, hồ sơ cá nhân và quản lý người dùng.
+- API dùng prefix `/api`; nghiệp vụ sự kiện, đặt vé, bán lại và thông báo dùng `/api/v1`.
+- Xác thực và quản trị người dùng giữ các route `/api/auth`, `/api/users` hiện có.
 - DTO được kiểm tra bằng `ValidationPipe`: từ chối trường thừa, chuyển sang
   instance DTO, không tự bật chuyển kiểu dữ liệu ngầm. Route nhận body/query
   cần khai báo class DTO và decorator validation tương ứng.
@@ -243,7 +251,7 @@ npm run start:prod
 ## Cấu trúc
 
 - `src/main.ts`: đọc môi trường và khởi chạy HTTP server với prefix `/api`.
-- `src/app.module.ts`: kết nối cấu hình, bảo mật, Users, Auth, Organizers, Events và Orders.
+- `src/app.module.ts`: kết nối cấu hình, bảo mật và các module nghiệp vụ.
 - `src/app.controller.ts`, `src/app.service.ts`: endpoint kiểm tra ứng dụng.
 - `src/app.controller.spec.ts`: kiểm tra service, HTTP thành công và 404.
 - `src/config/`: validation môi trường và module cấu hình dùng chung.
@@ -255,8 +263,10 @@ npm run start:prod
 - `src/modules/events/`: danh mục, sự kiện, suất diễn, hạng vé và tồn kho; xem `docs/event-management.md`, `docs/showing-management.md`, `docs/ticket-tier-management.md`.
 - `src/common/uploads/`: lưu ảnh sự kiện có giới hạn và kiểm tra nội dung; xem `docs/event-image-uploads.md`.
 - `src/modules/orders/`: đơn hàng, giữ/hủy vé và idempotency; xem `docs/order-reservations.md`.
-- `src/modules/payments/`: dữ liệu kết quả và hợp đồng cổng thanh toán; xem `docs/payment-foundation.md`.
-- `src/modules/tickets/`: phát hành vé nội bộ cho đơn đã thanh toán nhất quán; xem `docs/ticket-issuance.md`. Chưa có API tải vé, PDF hoặc email trong phạm vi này.
+- `src/modules/payments/`: checkout VNPay, IPN và khôi phục có xác minh; xem `docs/vnpay-integration.md`.
+- `src/modules/tickets/`: phát hành vé, PDF, QR và email; xem `docs/ticket-delivery.md`.
+- `src/modules/resale/`: chợ vé, chuyển chủ và chi trả/email qua DB; xem `docs/resale-v2.md`.
+- `src/modules/notifications/`: thông báo cá nhân lưu bền; xem `docs/web-notifications.md`.
 
 Các phạm vi mới: `docs/event-review-workflow.md`, `docs/event-discounts.md`
 và `docs/organizer-payout-account.md`. Migration tương thích đăng ký/giảm giá
@@ -273,3 +283,12 @@ một cách tự động. Không sửa lịch sử migration đã áp dụng.
 - Phát triển qua nhánh chức năng và pull request; không đưa file build,
   `node_modules`, thông tin cá nhân hoặc khóa bí mật lên Git.
 - Các commit nghiệp vụ tiếp theo cần kèm test, tài liệu và migration tương ứng.
+
+## Giới hạn và kiểm chứng
+
+- Thống kê hiển thị tổng thu, không khẳng định lợi nhuận hoặc tiền ngân hàng đã nhận.
+- Chi trả người bán dùng MOCK trong development/test, không chuyển tiền thật.
+- Không đưa lại check-in, mời nhân viên, OCR nhập vé hoặc API đối soát Admin.
+- TypeScript kiểm tra snapshot mã nguồn, không thay thế kiểm thử DB/trình duyệt/nhà cung cấp.
+- Theo yêu cầu, không chạy test, migration, seed hoặc thanh toán trong đợt commit này.
+- Tệp legacy và dữ liệu cục bộ không thuộc snapshot Git; xem `docs/source-scope.md`.
