@@ -217,7 +217,7 @@ describe('VNPay 2.1.0 sandbox protocol', () => {
   });
 
   it('signs the same sorted form encoding as the Node.js example with optional fields', () => {
-    const input = {
+    const input: Record<string, string> = {
       vnp_OrderInfo: 'Thanh toan ve 10000 VND',
       vnp_TmnCode: 'TESTCODE',
       vnp_BankCode: 'NCB',

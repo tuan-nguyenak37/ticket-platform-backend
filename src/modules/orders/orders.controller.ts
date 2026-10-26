@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  ConflictException,
   Get,
+  HttpCode,
   Headers,
   Param,
   Post,
@@ -20,6 +22,18 @@ import { OrdersService } from './orders.service';
 @Authenticated()
 export class OrdersController {
   constructor(private readonly orders: OrdersService) {}
+
+  @Post('checkout')
+  @HttpCode(200)
+  checkout(
+    @CurrentUser() actor: Principal,
+    @Headers('idempotency-key') key: string | undefined,
+    @Body() dto: CreateOrderDto,
+  ) {
+    throw new ConflictException(
+      'Vui lòng tạo đơn qua POST /v1/orders rồi xác thực tại /v1/checkout.',
+    );
+  }
 
   @Post()
   create(

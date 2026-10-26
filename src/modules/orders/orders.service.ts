@@ -22,6 +22,12 @@ import { TicketType } from '../events/ticket-types/entities/ticket-type.entity';
 import { TicketTypeStatus } from '../events/ticket-types/enums/ticket-type-status.enum';
 import { Organizer } from '../organizers/entities/organizer.entity';
 import { OrganizerStatus } from '../organizers/enums/organizer-status.enum';
+import { Payment, PaymentStatus } from '../payments/entities/payment.entity';
+import { PaymentProcessingService } from '../payments/payment-processing.service';
+import type { PaymentMethod } from '../payments/payment-method';
+import type { VnpayProof } from '../payments/vnpay.client';
+import { TicketIssuanceService } from '../tickets/ticket-issuance.service';
+import { TicketsService } from '../tickets/tickets.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderListDto } from './dto/order-query.dto';
 import { OrderItem } from './entities/order-item.entity';
@@ -29,7 +35,7 @@ import { Order } from './entities/order.entity';
 import { TicketReservation } from './entities/ticket-reservation.entity';
 import { OrderStatus } from './enums/order-status.enum';
 import { ReservationStatus } from './enums/reservation-status.enum';
-import { Payment } from '../payments/entities/payment.entity';
+import { recordNotification } from '../notifications/notifications.service';
 
 const MAX_BIGINT = 9223372036854775807n;
 
@@ -38,6 +44,9 @@ export class OrdersService {
   constructor(
     @InjectRepository(Order) private readonly orders: Repository<Order>,
     private readonly dataSource: DataSource,
+    private readonly issuance: TicketIssuanceService,
+    private readonly tickets: TicketsService,
+    private readonly paymentProcessing: PaymentProcessingService,
   ) {}
 
   async create(actor: Principal, key: string | undefined, dto: CreateOrderDto) {
@@ -242,6 +251,15 @@ export class OrdersService {
     }
   }
 
+  async checkout(
+    actor: Principal,
+    key: string | undefined,
+    dto: CreateOrderDto,
+  ) {
+    const order = await this.create(actor, key, dto);
+    return this.pay(actor, order.orderId);
+  }
+
   async mine(actor: Principal, query: OrderListDto) {
     const [items, total] = await this.orders.findAndCount({
       where: { userId: actor.user_id },
@@ -315,6 +333,117 @@ export class OrdersService {
       },
     );
     if ('conflict' in result) throw new ConflictException(result.conflict);
+    return result.data;
+  }
+
+  async pay(
+    actor: Principal,
+    orderId: string,
+    method?: PaymentMethod,
+    proof?: VnpayProof,
+  ) {
+    const result = await this.withLockedOrder(
+      actor,
+      orderId,
+      true,
+      async (manager, order, item, reservation, showing, organizer) => {
+        const prior = await manager
+          .getRepository(Payment)
+          .findOneBy({ orderId });
+        if (prior) {
+          if (prior.status !== PaymentStatus.SUCCEEDED)
+            return { conflict: 'Order cannot be paid' };
+          if (
+            prior.amount !== order.totalAmount ||
+            order.status !== OrderStatus.PAID
+          )
+            return { conflict: 'Payment history is inconsistent' };
+          await this.issuance.inspect(manager, orderId);
+          return {
+            data: {
+              order: this.response(order, item, reservation),
+              payment: this.paymentResponse(prior),
+            },
+          };
+        }
+        if (
+          order.status !== OrderStatus.PENDING_PAYMENT ||
+          reservation.status !== ReservationStatus.ACTIVE
+        )
+          return { conflict: 'Order cannot be paid' };
+        const { currentTime, valid } = await this.reservationTime(
+          manager,
+          reservation.expiresAt,
+          showing.startTime,
+        );
+        if (!valid) {
+          await this.settle(
+            manager,
+            order,
+            reservation,
+            OrderStatus.EXPIRED,
+            ReservationStatus.EXPIRED,
+            currentTime,
+          );
+          return { conflict: 'Order has expired' };
+        }
+        if (organizer?.status === OrganizerStatus.SUSPENDED) {
+          await this.settle(
+            manager,
+            order,
+            reservation,
+            OrderStatus.CANCELLED,
+            ReservationStatus.RELEASED,
+            currentTime,
+            'ORGANIZER_SUSPENDED',
+          );
+          return { conflict: 'Organizer is suspended' };
+        }
+        if (!organizer) throw new NotFoundException('Organizer not found');
+        if (
+          BigInt(item.unitPrice) * BigInt(item.quantity) -
+            BigInt(order.discountAmount ?? '0') !==
+          BigInt(order.totalAmount)
+        )
+          throw new ConflictException('Order amount does not match its item');
+        const charge = this.paymentProcessing.process(
+          `order:${orderId}`,
+          order.totalAmount,
+          method,
+          proof,
+        );
+        await this.consume(manager, order, reservation, currentTime);
+        const payment = await manager.save(
+          Payment,
+          manager.create(Payment, {
+            paymentId: charge.transactionId,
+            orderId,
+            status: PaymentStatus.SUCCEEDED,
+            amount: order.totalAmount,
+            processedAt: currentTime,
+          }),
+        );
+        await this.issuance.issue(manager, orderId);
+        await recordNotification(manager, {
+          userId: order.userId,
+          kind: 'ORDER_PAID',
+          sourceId: orderId,
+          title: 'Mua vé thành công',
+          body: `Đơn ${orderId} đã thanh toán thành công. Mở đơn hàng để xem vé của bạn.`,
+          href: `/checkout/orders/${encodeURIComponent(orderId)}`,
+        });
+        return {
+          notify: true,
+          data: {
+            order: this.response(order, item, reservation),
+            payment: this.paymentResponse(payment),
+          },
+        };
+      },
+    );
+    if ('conflict' in result) throw new ConflictException(result.conflict);
+    if ('notify' in result && result.notify)
+      await this.tickets.sendOrderAfterPayment(actor.user_id, orderId);
     return result.data;
   }
 
@@ -480,6 +609,31 @@ export class OrdersService {
     reservation.settledAt = currentTime;
   }
 
+  private async consume(
+    manager: EntityManager,
+    order: Order,
+    reservation: TicketReservation,
+    currentTime: Date,
+  ) {
+    const updated = (await manager.query(
+      `UPDATE ticket_inventories SET reserved_quantity = reserved_quantity - $2, sold_quantity = sold_quantity + $2
+      WHERE ticket_type_id = $1 AND reserved_quantity >= $2 RETURNING ticket_type_id`,
+      [reservation.ticketTypeId, reservation.quantity],
+    )) as [unknown[], number];
+    if (updated[1] !== 1)
+      throw new ConflictException('Inventory reservation mismatch');
+    order.status = OrderStatus.PAID;
+    await manager.save(Order, order);
+    const changed = (await manager.query(
+      `UPDATE ticket_reservations SET status = 'CONSUMED', settled_at = $2
+      WHERE reservation_id = $1 AND status = 'ACTIVE' RETURNING reservation_id`,
+      [reservation.reservationId, currentTime],
+    )) as [unknown[], number];
+    if (changed[1] !== 1)
+      throw new ConflictException('Reservation was already processed');
+    reservation.status = ReservationStatus.CONSUMED;
+    reservation.settledAt = currentTime;
+  }
   private async reservationTime(
     manager: EntityManager,
     expiresAt: Date,
@@ -532,16 +686,6 @@ export class OrdersService {
     return this.response(order, order.item, order.reservation);
   }
 
-  private paymentResponse(payment: Payment) {
-    return {
-      paymentId: payment.paymentId,
-      orderId: payment.orderId,
-      status: payment.status,
-      amount: payment.amount,
-      processedAt: payment.processedAt.toISOString(),
-    };
-  }
-
   private response(
     order: Order,
     item: OrderItem,
@@ -565,6 +709,16 @@ export class OrdersService {
       unitPrice: item.unitPrice,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
+    };
+  }
+
+  private paymentResponse(payment: Payment) {
+    return {
+      paymentId: payment.paymentId,
+      orderId: payment.orderId,
+      status: payment.status,
+      amount: payment.amount,
+      processedAt: payment.processedAt.toISOString(),
     };
   }
 }
