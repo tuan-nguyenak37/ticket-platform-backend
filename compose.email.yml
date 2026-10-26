@@ -1,22 +1,6 @@
 services:
-  email-redis:
-    image: redis:7-alpine
+  mailpit:
+    image: axllent/mailpit:latest
     ports:
-      - '127.0.0.1:${EMAIL_REDIS_PORT:-6380}:6379'
-    command:
-      [
-        'redis-server',
-        '--appendonly',
-        'yes',
-        '--maxmemory-policy',
-        'noeviction',
-      ]
-    volumes:
-      - email-redis-data:/data
-    healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
-      interval: 5s
-      timeout: 3s
-      retries: 10
-volumes:
-  email-redis-data:
+      - '127.0.0.1:1025:1025'
+      - '127.0.0.1:8025:8025'

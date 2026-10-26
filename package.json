@@ -22,7 +22,8 @@
     "typecheck": "tsc --noEmit --incremental false",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "jest --watch",
-    "test:cov": "jest --coverage"
+    "test:cov": "jest --coverage",
+    "seed:categories": "npm run build && node dist/database/seeds/run-seed.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
