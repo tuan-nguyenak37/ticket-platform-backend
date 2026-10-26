@@ -21,6 +21,7 @@ type DiscountView = Omit<DiscountDto, 'startsAt' | 'endsAt'> & {
   active: boolean;
   startsAt: Date;
   endsAt: Date;
+  usedOrReserved?: number;
 };
 
 @Injectable()
@@ -30,7 +31,9 @@ export class EventToolsService {
   discounts(eventId: string, actor: Principal) {
     return this.authorized(eventId, actor, true, false, (manager) =>
       manager.query<DiscountView[]>(
-        `SELECT ${discountColumns}
+        `SELECT ${discountColumns},
+      (SELECT count(*)::int FROM orders o LEFT JOIN ticket_reservations r ON r.order_id = o.order_id
+       WHERE o.discount_id = d.discount_id AND (o.status = 'PAID' OR (o.status = 'PENDING_PAYMENT' AND r.status = 'ACTIVE' AND r.expires_at > clock_timestamp()))) AS "usedOrReserved"
       FROM event_discounts d WHERE event_id = $1 ORDER BY created_at DESC`,
         [eventId],
       ),

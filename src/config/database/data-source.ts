@@ -18,6 +18,11 @@ import { EventReviewLog } from '../../modules/events/entities/event-review-log.e
 import { EventRegistrationDiscounts1792454402100 } from '../../database/migrations/1792454402100-EventRegistrationDiscounts';
 import { OrganizerPayoutAccount } from '../../modules/organizers/entities/organizer-payout-account.entity';
 import { OrganizerPayoutAccount1791888008000 } from '../../database/migrations/1791888008000-OrganizerPayoutAccount';
+import { Order } from '../../modules/orders/entities/order.entity';
+import { OrderItem } from '../../modules/orders/entities/order-item.entity';
+import { TicketReservation } from '../../modules/orders/entities/ticket-reservation.entity';
+import { OrdersReservations1791888004000 } from '../../database/migrations/1791888004000-OrdersReservations';
+import { OrderRegistrationDiscounts1792454402200 } from '../../database/migrations/1792454402200-OrderRegistrationDiscounts';
 import { envValidationSchema } from '../env.validation';
 import { validateEnvironment } from '../validate-environment';
 import { databaseConnectionOptions } from './database.options';
@@ -40,6 +45,9 @@ export const dataSource = new DataSource({
     TicketInventory,
     EventReviewLog,
     OrganizerPayoutAccount,
+    Order,
+    OrderItem,
+    TicketReservation,
   ],
   migrations: [
     BaselineUsersOrganizers1791888000000,
@@ -49,6 +57,8 @@ export const dataSource = new DataSource({
     AdminRoleChanges1792454403000,
     EventRegistrationDiscounts1792454402100,
     OrganizerPayoutAccount1791888008000,
+    OrdersReservations1791888004000,
+    OrderRegistrationDiscounts1792454402200,
   ],
   migrationsTransactionMode: 'all',
 });
