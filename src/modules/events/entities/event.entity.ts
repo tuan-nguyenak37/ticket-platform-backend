@@ -5,6 +5,7 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -12,6 +13,7 @@ import { Organizer } from '../../organizers/entities/organizer.entity';
 import { User } from '../../users/entities/user.entity';
 import { EventCategory } from './event-category.entity';
 import { EventStatus } from '../enums/event-status.enum';
+import { Showing } from '../showings/entities/showing.entity';
 
 @Entity('events')
 @Index('UQ_events_slug', ['slug'], { unique: true })
@@ -67,6 +69,9 @@ export class Event {
   @ManyToOne(() => User, { nullable: true, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'reviewed_by' })
   reviewer!: User | null;
+
+  @OneToMany(() => Showing, (showing) => showing.event)
+  showings!: Showing[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

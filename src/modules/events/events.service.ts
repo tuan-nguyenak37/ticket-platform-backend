@@ -29,6 +29,7 @@ import {
 import { EventCategory } from './entities/event-category.entity';
 import { Event } from './entities/event.entity';
 import { EventStatus } from './enums/event-status.enum';
+import { Showing } from './showings/entities/showing.entity';
 import { UploadsService } from '../../common/uploads/uploads.service';
 
 @Injectable()
@@ -75,8 +76,27 @@ export class EventsService {
       .skip((query.page - 1) * query.limit)
       .take(query.limit)
       .getManyAndCount();
+    const summaries = events.length
+      ? await this.dataSource
+          .getRepository(Showing)
+          .createQueryBuilder('showing')
+          .select('showing.eventId', 'eventId')
+          .addSelect('MIN(showing.startTime)', 'nextShowingAt')
+          .where('showing.eventId IN (:...eventIds)', {
+            eventIds: events.map((event) => event.eventId),
+          })
+          .andWhere('showing.startTime > CURRENT_TIMESTAMP')
+          .groupBy('showing.eventId')
+          .getRawMany<{ eventId: string; nextShowingAt: Date }>()
+      : [];
+    const byEvent = new Map(
+      summaries.map((summary) => [summary.eventId, summary]),
+    );
     return {
-      items: events.map((event) => this.publicResponse(event)),
+      items: events.map((event) => ({
+        ...this.publicResponse(event),
+        nextShowingAt: byEvent.get(event.eventId)?.nextShowingAt ?? null,
+      })),
       total,
       page: query.page,
       limit: query.limit,

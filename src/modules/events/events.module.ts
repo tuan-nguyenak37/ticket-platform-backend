@@ -9,13 +9,24 @@ import {
   OrganizerEventsController,
 } from './events.controller';
 import { EventsService } from './events.service';
+import { Showing } from './showings/entities/showing.entity';
+import {
+  EventShowingsController,
+  ShowingsController,
+} from './showings/showings.controller';
+import { ShowingsService } from './showings/showings.service';
 
 @Module({
   imports: [
     UploadsModule,
-    TypeOrmModule.forFeature([EventCategory, Event, OrganizerMember]),
+    TypeOrmModule.forFeature([EventCategory, Event, OrganizerMember, Showing]),
   ],
-  controllers: [EventsController, OrganizerEventsController],
-  providers: [EventsService],
+  controllers: [
+    EventsController,
+    OrganizerEventsController,
+    EventShowingsController,
+    ShowingsController,
+  ],
+  providers: [EventsService, ShowingsService],
 })
 export class EventsModule {}
