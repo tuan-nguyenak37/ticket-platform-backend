@@ -22,10 +22,31 @@ Sửa thông tin kết nối trong `.env` theo PostgreSQL của bạn trước k
 npm run start:dev
 ```
 
-API mặc định: `GET http://localhost:7000/api`, trả `Hello World!`.
+API mặc định: `GET http://localhost:7000/api`, trả `Hello World!` trong trường `data`.
 `PORT` có thể cấu hình từ 1 đến 65535; biến môi trường của tiến trình được ưu tiên
 hơn `.env`. Ứng dụng kiểm tra cấu hình và kết nối PostgreSQL khi khởi động;
 endpoint này không thực hiện kiểm tra sức khỏe database theo từng request.
+
+## Quy ước HTTP/API
+
+- API dùng prefix `/api`. Chưa có các route nghiệp vụ trong snapshot này.
+- DTO được kiểm tra bằng `ValidationPipe`: từ chối trường thừa, chuyển sang
+  instance DTO, không tự bật chuyển kiểu dữ liệu ngầm. Route nhận body/query
+  cần khai báo class DTO và decorator validation tương ứng.
+- Phản hồi thành công có `success`, `statusCode`, `message`, `data`, `timestamp`.
+- Phản hồi lỗi có `success=false`, `statusCode`, `message`, `path`, `timestamp`;
+  giữ `code` và `issues` nếu được khai báo rõ trong lỗi HTTP dưới 500.
+- Lỗi 5xx luôn trả `Internal server error`, không trả stack trace hoặc lỗi nội bộ.
+  Trường `path` không chứa query string. Thông điệp lỗi 4xx phải an toàn để công khai.
+- Mỗi request thông thường được cấp `X-Request-Id` mới từ server.
+- Không bọc `StreamableFile`, phản hồi 204/304 hoặc response đã gửi trực tiếp
+  bằng `@Res()`, để tương thích tải file, chuyển hướng và callback bên thứ ba.
+
+`FRONTEND_URL` là danh sách origin HTTP(S) phân cách bằng dấu phẩy; mặc định là
+`http://localhost:3000,http://localhost:5173`. Không chấp nhận `*`, đường dẫn,
+query, thông tin đăng nhập hoặc mục rỗng. CORS bật credentials chỉ cho origin
+được liệt kê; origin khác không nhận header cho phép. CORS không thay thế xác thực
+hoặc kiểm tra Origin/CSRF cho các nghiệp vụ nhạy cảm.
 
 ## Cấu hình PostgreSQL
 
@@ -82,6 +103,7 @@ npm run start:prod
 - `src/app.controller.spec.ts`: kiểm tra service, HTTP thành công và 404.
 - `src/config/`: validation môi trường và module cấu hình dùng chung.
 - `src/config/database/`: kết nối PostgreSQL và kiểm thử cấu hình/kết nối.
+- `src/common/`: validation HTTP, CORS, filter lỗi và interceptor phản hồi.
 - `.env.example`: cấu hình mẫu; không commit `.env` hoặc secrets.
 
 ## Quy ước Git

@@ -60,6 +60,10 @@ describe('Environment validation', () => {
     ['DB_PASSWORD', ''],
     ['DB_NAME', ''],
     ['NODE_ENV', 'invalid'],
+    ['FRONTEND_URL', '*'],
+    ['FRONTEND_URL', 'https://example.com/path'],
+    ['FRONTEND_URL', 'https://user:password@example.com'],
+    ['FRONTEND_URL', 'http://localhost:3000,'],
     ['DB_SYNCHRONIZE', true],
     ['DB_SYNCHRONIZE', 'true'],
   ])('rejects invalid %s=%s', (key, value) => {
