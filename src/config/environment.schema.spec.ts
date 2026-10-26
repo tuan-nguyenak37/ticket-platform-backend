@@ -3,6 +3,7 @@ import { validateEnvironment } from './validate-environment';
 
 describe('Environment validation', () => {
   const databaseEnvironment = {
+    TICKET_QR_SECRET: 'test-qr-key-distinct-from-the-jwt-secrets',
     DB_HOST: '127.0.0.1',
     DB_USERNAME: 'ticketverse',
     DB_PASSWORD: 'test-password',

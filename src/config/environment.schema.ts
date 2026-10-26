@@ -21,6 +21,29 @@ export const environmentSchema = Joi.object({
       }
     })
     .default(defaultFrontendOrigins),
+  TICKET_QR_SECRET: Joi.string()
+    .min(32)
+    .invalid(Joi.ref('JWT_ACCESS_SECRET'), Joi.ref('JWT_REFRESH_SECRET'))
+    .required(),
+  TICKET_EMAIL_ENABLED: Joi.boolean().default(false),
+  SMTP_HOST: Joi.when('TICKET_EMAIL_ENABLED', {
+    is: true,
+    then: Joi.string().required(),
+    otherwise: Joi.string().optional(),
+  }),
+  SMTP_PORT: Joi.number().integer().min(1).max(65535).default(587),
+  SMTP_SECURE: Joi.boolean().default(false),
+  SMTP_USER: Joi.string().allow('').optional(),
+  SMTP_PASS: Joi.when('SMTP_USER', {
+    is: Joi.string().min(1).required(),
+    then: Joi.string().required(),
+    otherwise: Joi.string().allow('').optional(),
+  }),
+  SMTP_FROM: Joi.when('TICKET_EMAIL_ENABLED', {
+    is: true,
+    then: Joi.string().email().required(),
+    otherwise: Joi.string().email().optional(),
+  }),
   DB_HOST: Joi.string().trim().required(),
   DB_PORT: Joi.number().integer().min(1).max(65535).default(5432),
   DB_USERNAME: Joi.string().trim().required(),
