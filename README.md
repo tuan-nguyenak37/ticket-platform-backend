@@ -108,16 +108,16 @@ mô tả riêng trong `docs/user-role-changes.md`.
 
 Các route web đang dùng:
 
-| Phương thức | Route | Chức năng |
-| --- | --- | --- |
-| POST | `/api/auth/register` | Đăng ký người dùng thường, chỉ trả hồ sơ |
-| POST | `/api/auth/browser/login` | Đăng nhập, trả access token và đặt refresh cookie |
-| POST | `/api/auth/browser/refresh` | Xoay refresh cookie, trả access token mới |
-| POST | `/api/auth/browser/logout` | Thu hồi phiên và xóa cookie, không cần access còn hạn |
-| GET | `/api/auth/browser/session` | Hồ sơ cho SSR; không cấp access hoặc xoay refresh |
-| GET | `/api/users/me` | Hồ sơ chính mình, yêu cầu Bearer access JWT |
-| PATCH | `/api/users/me` | Cập nhật tên, số điện thoại và URL ảnh đại diện |
-| PATCH | `/api/users/me/password` | Đổi mật khẩu và thu hồi toàn bộ phiên |
+| Phương thức | Route                       | Chức năng                                             |
+| ----------- | --------------------------- | ----------------------------------------------------- |
+| POST        | `/api/auth/register`        | Đăng ký người dùng thường, chỉ trả hồ sơ              |
+| POST        | `/api/auth/browser/login`   | Đăng nhập, trả access token và đặt refresh cookie     |
+| POST        | `/api/auth/browser/refresh` | Xoay refresh cookie, trả access token mới             |
+| POST        | `/api/auth/browser/logout`  | Thu hồi phiên và xóa cookie, không cần access còn hạn |
+| GET         | `/api/auth/browser/session` | Hồ sơ cho SSR; không cấp access hoặc xoay refresh     |
+| GET         | `/api/users/me`             | Hồ sơ chính mình, yêu cầu Bearer access JWT           |
+| PATCH       | `/api/users/me`             | Cập nhật tên, số điện thoại và URL ảnh đại diện       |
+| PATCH       | `/api/users/me/password`    | Đổi mật khẩu và thu hồi toàn bộ phiên                 |
 
 POST có thay đổi cookie phải có `Origin` nằm trong `FRONTEND_URL`. Refresh JWT
 web chỉ ở cookie `ticketverse_refresh`, HttpOnly, SameSite=Lax, Path=/, Secure
@@ -242,7 +242,7 @@ npm run start:prod
 ## Cấu trúc
 
 - `src/main.ts`: đọc môi trường và khởi chạy HTTP server với prefix `/api`.
-- `src/app.module.ts`: kết nối cấu hình, bảo mật, Users, Auth, Organizers và Events.
+- `src/app.module.ts`: kết nối cấu hình, bảo mật, Users, Auth, Organizers, Events và Orders.
 - `src/app.controller.ts`, `src/app.service.ts`: endpoint kiểm tra ứng dụng.
 - `src/app.controller.spec.ts`: kiểm tra service, HTTP thành công và 404.
 - `src/config/`: validation môi trường và module cấu hình dùng chung.
@@ -253,6 +253,14 @@ npm run start:prod
 - `src/modules/organizers/`: hồ sơ ban tổ chức và quyền sở hữu; xem `docs/organizer-profiles.md`.
 - `src/modules/events/`: danh mục, sự kiện, suất diễn, hạng vé và tồn kho; xem `docs/event-management.md`, `docs/showing-management.md`, `docs/ticket-tier-management.md`.
 - `src/common/uploads/`: lưu ảnh sự kiện có giới hạn và kiểm tra nội dung; xem `docs/event-image-uploads.md`.
+- `src/modules/orders/`: đơn hàng, giữ/hủy vé và idempotency; xem `docs/order-reservations.md`.
+- `src/modules/payments/`: dữ liệu kết quả và hợp đồng cổng thanh toán; xem `docs/payment-foundation.md`.
+
+Các phạm vi mới: `docs/event-review-workflow.md`, `docs/event-discounts.md`
+và `docs/organizer-payout-account.md`. Migration tương thích đăng ký/giảm giá
+là forward-only; không đưa migration EventOperations cũ vào danh sách mới
+một cách tự động. Không sửa lịch sử migration đã áp dụng.
+
 - `src/common/`: validation HTTP, CORS, filter lỗi và interceptor phản hồi.
 - `.env.example`: cấu hình mẫu; không commit `.env` hoặc secrets.
 

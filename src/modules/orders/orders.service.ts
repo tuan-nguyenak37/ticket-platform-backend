@@ -29,6 +29,7 @@ import { Order } from './entities/order.entity';
 import { TicketReservation } from './entities/ticket-reservation.entity';
 import { OrderStatus } from './enums/order-status.enum';
 import { ReservationStatus } from './enums/reservation-status.enum';
+import { Payment } from '../payments/entities/payment.entity';
 
 const MAX_BIGINT = 9223372036854775807n;
 
@@ -265,7 +266,13 @@ export class OrdersService {
       relations: { item: true, reservation: true },
     });
     if (!order) throw new NotFoundException('Order not found');
-    return this.response(order, order.item, order.reservation);
+    const payment = await this.dataSource
+      .getRepository(Payment)
+      .findOneBy({ orderId });
+    return {
+      ...this.response(order, order.item, order.reservation),
+      payment: payment ? this.paymentResponse(payment) : null,
+    };
   }
 
   async cancel(actor: Principal, orderId: string) {
@@ -523,6 +530,16 @@ export class OrdersService {
         'Idempotency-Key was used with a different order',
       );
     return this.response(order, order.item, order.reservation);
+  }
+
+  private paymentResponse(payment: Payment) {
+    return {
+      paymentId: payment.paymentId,
+      orderId: payment.orderId,
+      status: payment.status,
+      amount: payment.amount,
+      processedAt: payment.processedAt.toISOString(),
+    };
   }
 
   private response(
