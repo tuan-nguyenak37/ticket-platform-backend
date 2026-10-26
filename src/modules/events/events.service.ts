@@ -1,3 +1,4 @@
+import { recordNotification } from '../notifications/notifications.service';
 import {
   BadRequestException,
   ConflictException,
@@ -464,6 +465,29 @@ export class EventsService {
           reason,
         }),
       );
+      const owners: { user_id: string }[] = await manager.query(
+        "SELECT user_id FROM organizer_members WHERE organizer_id=$1 AND role='OWNER'",
+        [organizer.organizerId],
+      );
+      for (const owner of owners) {
+        await recordNotification(manager, {
+          userId: owner.user_id,
+          kind:
+            action === EventReviewAction.APPROVED
+              ? 'EVENT_APPROVED'
+              : 'EVENT_REJECTED',
+          sourceId: reviewId,
+          title:
+            action === EventReviewAction.APPROVED
+              ? 'Sự kiện đã được duyệt'
+              : 'Sự kiện bị từ chối',
+          body:
+            action === EventReviewAction.APPROVED
+              ? `${event.title} đã được duyệt và công bố.`
+              : `${event.title} bị từ chối duyệt.${reason ? ` Lý do: ${reason}` : ''}`,
+          href: `/organizer/${encodeURIComponent(organizer.organizerId)}/events/${encodeURIComponent(eventId)}`,
+        });
+      }
       return this.managementResponse(event);
     });
   }

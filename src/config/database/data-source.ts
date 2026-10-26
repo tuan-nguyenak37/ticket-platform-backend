@@ -29,6 +29,7 @@ import { Ticket } from '../../modules/tickets/entities/ticket.entity';
 import { TicketCredential } from '../../modules/tickets/entities/ticket-credential.entity';
 import { TicketOwnership } from '../../modules/tickets/entities/ticket-ownership.entity';
 import { IssuedTickets1791888006000 } from '../../database/migrations/1791888006000-IssuedTickets';
+import { WebNotifications1792540800000 } from '../../database/migrations/1792540800000-WebNotifications';
 import { envValidationSchema } from '../env.validation';
 import { validateEnvironment } from '../validate-environment';
 import { databaseConnectionOptions } from './database.options';
@@ -71,6 +72,7 @@ export const dataSource = new DataSource({
     OrderRegistrationDiscounts1792454402200,
     MockPayments1791888005000,
     IssuedTickets1791888006000,
+    WebNotifications1792540800000,
   ],
   migrationsTransactionMode: 'all',
 });
