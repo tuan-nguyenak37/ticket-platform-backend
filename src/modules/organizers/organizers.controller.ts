@@ -17,6 +17,7 @@ import type { Principal } from '../auth/authorization/principal';
 import { CreateOrganizerDto } from './dto/create-organizer.dto';
 import { OrganizerIdDto, UpdateOrganizerDto } from './dto/update-organizer.dto';
 import { OrganizersService } from './organizers.service';
+import { OrganizerEventReportDto } from './dto/organizer-report.dto';
 import { PayoutAccountDto } from './dto/payout-account.dto';
 
 @Controller('v1/organizers')
@@ -41,6 +42,21 @@ export class OrganizersController {
   @Header('Cache-Control', 'no-store')
   findOne(@Param() params: OrganizerIdDto) {
     return this.organizers.findOne(params.id);
+  }
+
+  @Get(':id/report')
+  @Header('Cache-Control', 'no-store')
+  report(@Param() params: OrganizerIdDto, @CurrentUser() actor: Principal) {
+    return this.organizers.report(params.id, actor.user_id);
+  }
+
+  @Get(':id/events/:eventId/report')
+  @Header('Cache-Control', 'no-store')
+  eventReport(
+    @Param() params: OrganizerEventReportDto,
+    @CurrentUser() actor: Principal,
+  ) {
+    return this.organizers.report(params.id, actor.user_id, params.eventId);
   }
 
   @Get(':id/payout-account')

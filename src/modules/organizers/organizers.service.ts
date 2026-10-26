@@ -128,6 +128,57 @@ export class OrganizersService {
     });
   }
 
+  async report(organizerId: string, userId: string, eventId?: string) {
+    await this.requirePayoutOwner(organizerId, userId);
+    if (eventId) {
+      const owned: unknown[] = await this.dataSource.query(
+        'SELECT event_id FROM events WHERE event_id = $1 AND organizer_id = $2',
+        [eventId, organizerId],
+      );
+      if (!owned.length) throw new NotFoundException('Event not found');
+    }
+    const rows: Array<{
+      eventId: string;
+      eventTitle: string;
+      showingId: string;
+      showingName: string;
+      showingStartTime: Date;
+      ticketTypeId: string;
+      ticketTypeName: string;
+      orderCount: string;
+      ticketCount: string;
+      amount: string;
+    }> = await this.dataSource.query(
+      `
+      SELECT e.event_id AS "eventId", e.title AS "eventTitle", s.showing_id AS "showingId", s.name AS "showingName", s.start_time AS "showingStartTime",
+        t.ticket_type_id AS "ticketTypeId", t.name AS "ticketTypeName",
+        COUNT(o.order_id)::text AS "orderCount", COALESCE(SUM(CASE WHEN o.order_id IS NOT NULL THEN i.quantity ELSE 0 END),0)::text AS "ticketCount",
+        COALESCE(SUM(o.total_amount),0)::text AS amount
+      FROM events e JOIN showings s ON s.event_id = e.event_id JOIN ticket_types t ON t.showing_id = s.showing_id
+      LEFT JOIN order_items i ON i.ticket_type_id = t.ticket_type_id LEFT JOIN orders o ON o.order_id = i.order_id AND o.status = 'PAID'
+      WHERE e.organizer_id = $1 AND ($2::varchar IS NULL OR e.event_id = $2)
+      GROUP BY e.event_id, e.title, s.showing_id, s.name, s.start_time, t.ticket_type_id, t.name
+      ORDER BY e.title, s.start_time, s.showing_id, t.name, t.ticket_type_id
+    `,
+      [organizerId, eventId ?? null],
+    );
+    return {
+      rows,
+      totals: rows.reduce(
+        (sum, row) => ({
+          orderCount: (
+            BigInt(sum.orderCount) + BigInt(row.orderCount)
+          ).toString(),
+          ticketCount: (
+            BigInt(sum.ticketCount) + BigInt(row.ticketCount)
+          ).toString(),
+          amount: (BigInt(sum.amount) + BigInt(row.amount)).toString(),
+        }),
+        { orderCount: '0', ticketCount: '0', amount: '0' },
+      ),
+    };
+  }
+
   async payoutAccount(organizerId: string, userId: string) {
     await this.requirePayoutOwner(organizerId, userId);
     return this.dataSource
