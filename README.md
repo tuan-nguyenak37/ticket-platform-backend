@@ -2,9 +2,10 @@
 
 Nền tảng API NestJS của TicketVerse với cấu hình môi trường, kết nối PostgreSQL
 và mô hình người dùng, Redis và kho lưu phiên refresh.
-Bao gồm xác thực JWT, hồ sơ cá nhân và quản lý người dùng; chưa bao gồm sự kiện,
-đặt vé, VNPay, bán lại vé hoặc thống kê quản trị. Có đổi vai trò USER/MODERATOR
-với nhật ký bền vững và thu hồi phiên.
+Bao gồm xác thực JWT, hồ sơ cá nhân, quản lý người dùng, Organizer, sự kiện,
+đơn hàng, giữ vé và nền tảng phát hành vé. Chưa tích hợp VNPay, bán lại vé hoặc
+thống kê quản trị trong lịch sử này. Có đổi vai trò USER/MODERATOR với nhật ký
+bền vững và thu hồi phiên.
 
 ## Yêu cầu
 
@@ -255,6 +256,7 @@ npm run start:prod
 - `src/common/uploads/`: lưu ảnh sự kiện có giới hạn và kiểm tra nội dung; xem `docs/event-image-uploads.md`.
 - `src/modules/orders/`: đơn hàng, giữ/hủy vé và idempotency; xem `docs/order-reservations.md`.
 - `src/modules/payments/`: dữ liệu kết quả và hợp đồng cổng thanh toán; xem `docs/payment-foundation.md`.
+- `src/modules/tickets/`: phát hành vé nội bộ cho đơn đã thanh toán nhất quán; xem `docs/ticket-issuance.md`. Chưa có API tải vé, PDF hoặc email trong phạm vi này.
 
 Các phạm vi mới: `docs/event-review-workflow.md`, `docs/event-discounts.md`
 và `docs/organizer-payout-account.md`. Migration tương thích đăng ký/giảm giá

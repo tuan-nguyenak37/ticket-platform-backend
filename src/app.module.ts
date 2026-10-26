@@ -10,6 +10,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { OrganizersModule } from './modules/organizers/organizers.module';
 import { EventsModule } from './modules/events/events.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { TicketsModule } from './modules/tickets/tickets.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { OrdersModule } from './modules/orders/orders.module';
     OrganizersModule,
     EventsModule,
     OrdersModule,
+    TicketsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

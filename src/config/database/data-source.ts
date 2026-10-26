@@ -25,6 +25,10 @@ import { OrdersReservations1791888004000 } from '../../database/migrations/17918
 import { OrderRegistrationDiscounts1792454402200 } from '../../database/migrations/1792454402200-OrderRegistrationDiscounts';
 import { Payment } from '../../modules/payments/entities/payment.entity';
 import { MockPayments1791888005000 } from '../../database/migrations/1791888005000-MockPayments';
+import { Ticket } from '../../modules/tickets/entities/ticket.entity';
+import { TicketCredential } from '../../modules/tickets/entities/ticket-credential.entity';
+import { TicketOwnership } from '../../modules/tickets/entities/ticket-ownership.entity';
+import { IssuedTickets1791888006000 } from '../../database/migrations/1791888006000-IssuedTickets';
 import { envValidationSchema } from '../env.validation';
 import { validateEnvironment } from '../validate-environment';
 import { databaseConnectionOptions } from './database.options';
@@ -51,6 +55,9 @@ export const dataSource = new DataSource({
     OrderItem,
     TicketReservation,
     Payment,
+    Ticket,
+    TicketCredential,
+    TicketOwnership,
   ],
   migrations: [
     BaselineUsersOrganizers1791888000000,
@@ -63,6 +70,7 @@ export const dataSource = new DataSource({
     OrdersReservations1791888004000,
     OrderRegistrationDiscounts1792454402200,
     MockPayments1791888005000,
+    IssuedTickets1791888006000,
   ],
   migrationsTransactionMode: 'all',
 });
