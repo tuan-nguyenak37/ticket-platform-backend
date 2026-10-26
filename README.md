@@ -113,6 +113,8 @@ Các route web đang dùng:
 | POST | `/api/auth/browser/logout` | Thu hồi phiên và xóa cookie, không cần access còn hạn |
 | GET | `/api/auth/browser/session` | Hồ sơ cho SSR; không cấp access hoặc xoay refresh |
 | GET | `/api/users/me` | Hồ sơ chính mình, yêu cầu Bearer access JWT |
+| PATCH | `/api/users/me` | Cập nhật tên, số điện thoại và URL ảnh đại diện |
+| PATCH | `/api/users/me/password` | Đổi mật khẩu và thu hồi toàn bộ phiên |
 
 POST có thay đổi cookie phải có `Origin` nằm trong `FRONTEND_URL`. Refresh JWT
 web chỉ ở cookie `ticketverse_refresh`, HttpOnly, SameSite=Lax, Path=/, Secure
@@ -201,6 +203,30 @@ npm test -- --runInBand
 
 CI cung cấp PostgreSQL 16 riêng và luôn bật bài kiểm tra kết nối. Bài kiểm tra
 chỉ chạy `SELECT 1`, không ghi dữ liệu hoặc thay đổi schema.
+
+## Hồ sơ cá nhân
+
+`PATCH /api/users/me` chỉ nhận `full_name`, `phone_number`, `avatar_url`; cần ít
+nhất một trường. Tên được trim, dài 1–150 ký tự và không nhận `null`. Số điện
+thoại tối đa 20 ký tự, gồm 7–20 chữ số và dấu `+` tùy chọn; gửi `null` để xóa.
+Ảnh đại diện là URL HTTP(S) tối đa 2048 ký tự, gửi `null` để xóa; API không tải
+ảnh về server và chưa có chức năng upload ảnh đại diện. Email, vai trò, trạng
+thái, ID và mật khẩu không được cập nhật qua endpoint hồ sơ.
+
+`PATCH /api/users/me/password` nhận `currentPassword` và `newPassword`. Mật khẩu
+mới dài 6–32 ký tự, tối đa 72 byte để tránh bcrypt cắt chuỗi. Kiểm tra mật khẩu
+hiện tại và từ chối mật khẩu mới tương đương mật khẩu cũ; không trim mật khẩu.
+Khóa hàng người dùng trong transaction, thu hồi mọi phiên Redis trước khi lưu
+hash mới và xóa cookie web/cũ chỉ sau khi thành công. Client phải xóa access
+token trong bộ nhớ và yêu cầu đăng nhập lại. Lỗi Redis ngăn lưu mật khẩu; lỗi DB
+sau thu hồi có thể khiến người dùng cần đăng nhập lại bằng mật khẩu cũ. PostgreSQL
+và Redis không có transaction phân tán; phiên đăng nhập/refresh đang xử lý đồng
+thời vẫn cần kiểm chứng tích hợp. Không ghi mật khẩu vào log hay trả hash qua API.
+
+Cả hai API yêu cầu Bearer access JWT và tài khoản ACTIVE, không nhận ID người
+dùng khác từ body. Phản hồi đặt `Cache-Control: no-store`. Đổi mật khẩu giới hạn
+5 lần/15 phút theo mạng nguồn. Các test hồ sơ đã được bổ sung nhưng không chạy
+trong đợt commit này theo yêu cầu.
 
 ## Bản build
 
