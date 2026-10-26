@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Res,
+  Query,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { RateLimit } from '../../common/security/rate-limit.decorator';
@@ -22,6 +23,7 @@ import {
   Roles,
 } from '../auth/authorization/access-policy';
 import type { Principal } from '../auth/authorization/principal';
+import { AdminStatisticsDto } from './dto/admin-statistics.dto';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -81,6 +83,21 @@ export class UsersController {
   @Audit('users.list')
   findAll(@CurrentUser() actor: Principal) {
     return this.users.findAll(actor);
+  }
+
+  @Get('admin-summary')
+  @Header('Cache-Control', 'no-store')
+  summary(@CurrentUser() actor: Principal) {
+    return this.users.adminSummary(actor);
+  }
+
+  @Get('admin-statistics')
+  @Header('Cache-Control', 'no-store')
+  statistics(
+    @CurrentUser() actor: Principal,
+    @Query() query: AdminStatisticsDto,
+  ) {
+    return this.users.adminStatistics(actor, query);
   }
 
   @Get(':id')

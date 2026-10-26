@@ -22,6 +22,7 @@ import { UserStatus } from './enums/user-status.enum';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
+import { AdminStatisticsDto } from './dto/admin-statistics.dto';
 import { generateId } from '../../common/utils/generateId';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
@@ -202,6 +203,142 @@ export class UsersService {
         await this.sessions.revokeAll(id);
       user.status = dto.status;
       return publicUser(await repository.save(user));
+    });
+  }
+
+  async adminSummary(actor: Principal) {
+    assertUserAdministrator(actor);
+    const [summary] = await this.dataSource.query<
+      {
+        users: string;
+        moderators: string;
+        organizers: string;
+        pendingEvents: string;
+        publishedEvents: string;
+        paidOrders: string;
+        paidResaleOrders: string;
+        reviewPayments: string;
+      }[]
+    >(`SELECT
+      (SELECT count(*)::text FROM users) AS users,
+      (SELECT count(*)::text FROM users WHERE role='MODERATOR') AS moderators,
+      (SELECT count(*)::text FROM organizers) AS organizers,
+      (SELECT count(*)::text FROM events WHERE status='PENDING_REVIEW') AS "pendingEvents",
+      (SELECT count(*)::text FROM events WHERE status='PUBLISHED') AS "publishedEvents",
+      (SELECT count(*)::text FROM orders WHERE status='PAID') AS "paidOrders",
+      (SELECT count(*)::text FROM resale_orders WHERE status='PAID') AS "paidResaleOrders",
+      (SELECT count(*)::text FROM vnpay_transactions WHERE status='REVIEW') AS "reviewPayments"`);
+    return summary;
+  }
+
+  async adminStatistics(actor: Principal, query: AdminStatisticsDto) {
+    assertUserAdministrator(actor);
+    const dateTo =
+      query.dateTo ??
+      new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+    const end = Date.parse(`${dateTo}T00:00:00Z`);
+    const dateFrom =
+      query.dateFrom ??
+      new Date(end - 29 * 86400000).toISOString().slice(0, 10);
+    const start = Date.parse(`${dateFrom}T00:00:00Z`);
+    if (
+      !Number.isFinite(start) ||
+      !Number.isFinite(end) ||
+      start > end ||
+      end - start > 365 * 86400000
+    ) {
+      throw new BadRequestException('Khoảng thống kê phải từ 1 đến 366 ngày');
+    }
+    const groupBy = query.groupBy ?? 'day';
+    if (!['day', 'month'].includes(groupBy))
+      throw new BadRequestException('Nhóm thống kê không hợp lệ');
+    const parameters = [dateFrom, dateTo, groupBy];
+    const sales = `WITH sales AS (
+      SELECT 'orders' AS kind, p.processed_at, p.amount, i.quantity,
+        s.event_id
+      FROM payments p JOIN orders o ON o.order_id=p.order_id
+        JOIN order_items i ON i.order_id=o.order_id
+        JOIN ticket_types t ON t.ticket_type_id=i.ticket_type_id
+        JOIN showings s ON s.showing_id=t.showing_id
+      WHERE p.status='SUCCEEDED' AND o.status='PAID'
+        AND p.processed_at >= ($1::date::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh')
+        AND p.processed_at < (($2::date + 1)::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh')
+      UNION ALL
+      SELECT 'resale', p.processed_at, p.amount, 1, s.event_id
+      FROM resale_payments p JOIN resale_orders o ON o.resale_order_id=p.resale_order_id
+        JOIN resale_listings l ON l.listing_id=o.listing_id
+        JOIN tickets k ON k.ticket_id=l.ticket_id
+        JOIN ticket_types t ON t.ticket_type_id=k.ticket_type_id
+        JOIN showings s ON s.showing_id=t.showing_id
+      WHERE p.status='SUCCEEDED' AND o.status='PAID'
+        AND p.processed_at >= ($1::date::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh')
+        AND p.processed_at < (($2::date + 1)::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh')
+    )`;
+    return this.dataSource.transaction('REPEATABLE READ', async (manager) => {
+      const series = await manager.query<
+        {
+          period: string;
+          originalOrders: string;
+          resaleOrders: string;
+          originalAmount: string;
+          resaleAmount: string;
+        }[]
+      >(
+        `${sales}, periods AS (
+        SELECT generate_series(date_trunc($3, $1::date::timestamp), date_trunc($3, $2::date::timestamp),
+          CASE WHEN $3='month' THEN interval '1 month' ELSE interval '1 day' END)::date AS period
+      )
+      SELECT to_char(periods.period, 'YYYY-MM-DD') AS period,
+        count(s.kind) FILTER (WHERE s.kind='orders')::text AS "originalOrders",
+        count(s.kind) FILTER (WHERE s.kind='resale')::text AS "resaleOrders",
+        coalesce(sum(s.amount) FILTER (WHERE s.kind='orders'),0)::text AS "originalAmount",
+        coalesce(sum(s.amount) FILTER (WHERE s.kind='resale'),0)::text AS "resaleAmount"
+      FROM periods LEFT JOIN sales s ON date_trunc($3, s.processed_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date=periods.period
+      GROUP BY periods.period ORDER BY periods.period`,
+        parameters,
+      );
+      const topEvents = await manager.query<
+        {
+          eventId: string;
+          title: string;
+          originalTickets: string;
+          resaleTickets: string;
+        }[]
+      >(
+        `${sales}
+      SELECT e.event_id AS "eventId", e.title,
+        coalesce(sum(s.quantity) FILTER (WHERE s.kind='orders'),0)::text AS "originalTickets",
+        coalesce(sum(s.quantity) FILTER (WHERE s.kind='resale'),0)::text AS "resaleTickets"
+      FROM sales s JOIN events e ON e.event_id=s.event_id
+      GROUP BY e.event_id, e.title
+      ORDER BY sum(s.quantity) DESC, e.event_id ASC LIMIT 10`,
+        parameters.slice(0, 2),
+      );
+      const payments = await manager.query<
+        {
+          kind: 'orders' | 'resale';
+          status: 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'REVIEW';
+          count: string;
+        }[]
+      >(
+        `SELECT kinds.kind, statuses.status, count(v.txn_ref)::text AS count
+      FROM (VALUES ('orders'),('resale')) AS kinds(kind)
+      CROSS JOIN (VALUES ('SUCCEEDED'),('FAILED'),('PENDING'),('REVIEW')) AS statuses(status)
+      LEFT JOIN vnpay_transactions v ON v.kind=kinds.kind AND v.status=statuses.status
+        AND v.created_at >= ($1::date::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh')
+        AND v.created_at < (($2::date + 1)::timestamp AT TIME ZONE 'Asia/Ho_Chi_Minh')
+      GROUP BY kinds.kind, statuses.status ORDER BY kinds.kind, statuses.status`,
+        parameters.slice(0, 2),
+      );
+      return {
+        dateFrom,
+        dateTo,
+        groupBy,
+        timeZone: 'Asia/Ho_Chi_Minh',
+        series,
+        topEvents,
+        payments,
+      };
     });
   }
 
