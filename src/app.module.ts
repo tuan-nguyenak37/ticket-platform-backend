@@ -9,6 +9,7 @@ import { SecurityModule } from './common/security/security.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { OrganizersModule } from './modules/organizers/organizers.module';
 import { EventsModule } from './modules/events/events.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ResaleModule } from './modules/resale/resale.module';
@@ -25,6 +26,7 @@ import { TicketsModule } from './modules/tickets/tickets.module';
     OrganizersModule,
     EventsModule,
     OrdersModule,
+    PaymentsModule,
     TicketsModule,
     ResaleModule,
     NotificationsModule,

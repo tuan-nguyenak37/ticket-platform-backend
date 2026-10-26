@@ -37,6 +37,11 @@ import { ResalePayout } from '../../modules/resale/entities/resale-payout.entity
 import { ResaleEmail } from '../../modules/resale/entities/resale-email.entity';
 import { InternalResale1791888007000 } from '../../database/migrations/1791888007000-InternalResale';
 import { ResaleSellerSettlement1792454405000 } from '../../database/migrations/1792454405000-ResaleSellerSettlement';
+import { CheckoutSession } from '../../modules/payments/entities/checkout-session.entity';
+import { VnpayTransaction } from '../../modules/payments/entities/vnpay-transaction.entity';
+import { CheckoutSessions1792454400000 } from '../../database/migrations/1792454400000-CheckoutSessions';
+import { VnpayTransactions1792454401000 } from '../../database/migrations/1792454401000-VnpayTransactions';
+import { VnpayReconciliations1792454404000 } from '../../database/migrations/1792454404000-VnpayReconciliations';
 import { envValidationSchema } from '../env.validation';
 import { validateEnvironment } from '../validate-environment';
 import { databaseConnectionOptions } from './database.options';
@@ -63,6 +68,8 @@ export const dataSource = new DataSource({
     OrderItem,
     TicketReservation,
     Payment,
+    VnpayTransaction,
+    CheckoutSession,
     Ticket,
     TicketCredential,
     TicketOwnership,
@@ -86,6 +93,9 @@ export const dataSource = new DataSource({
     IssuedTickets1791888006000,
     InternalResale1791888007000,
     ResaleSellerSettlement1792454405000,
+    CheckoutSessions1792454400000,
+    VnpayTransactions1792454401000,
+    VnpayReconciliations1792454404000,
     WebNotifications1792540800000,
   ],
   migrationsTransactionMode: 'all',
