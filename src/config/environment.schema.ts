@@ -21,6 +21,20 @@ export const environmentSchema = Joi.object({
       }
     })
     .default(defaultFrontendOrigins),
+  PAYMENT_PROVIDER: Joi.string()
+    .valid('VNPAY', 'PROJECT')
+    .default('VNPAY')
+    .when('NODE_ENV', { is: 'production', then: Joi.valid('VNPAY') }),
+  VNPAY_TMN_CODE: Joi.string().trim().allow('').optional(),
+  VNPAY_HASH_SECRET: Joi.string().allow('').optional(),
+  VNPAY_QUERY_IP: Joi.string().ip().default('127.0.0.1'),
+  VNPAY_RETURN_URL: Joi.string()
+    .uri({ scheme: ['http', 'https'] })
+    .allow('')
+    .optional(),
+  VNPAY_FRONTEND_URL: Joi.string()
+    .uri({ scheme: ['http', 'https'] })
+    .default('http://localhost:3000'),
   TICKET_QR_SECRET: Joi.string()
     .min(32)
     .invalid(Joi.ref('JWT_ACCESS_SECRET'), Joi.ref('JWT_REFRESH_SECRET'))
