@@ -8,6 +8,7 @@ import { UsersModule } from './modules/users/users.module';
 import { SecurityModule } from './common/security/security.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { OrganizersModule } from './modules/organizers/organizers.module';
+import { EventsModule } from './modules/events/events.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { OrganizersModule } from './modules/organizers/organizers.module';
     SecurityModule,
     AuthModule,
     OrganizersModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

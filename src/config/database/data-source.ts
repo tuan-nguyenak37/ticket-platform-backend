@@ -6,6 +6,9 @@ import { AdminRoleChanges1792454403000 } from '../../database/migrations/1792454
 import { User } from '../../modules/users/entities/user.entity';
 import { Organizer } from '../../modules/organizers/entities/organizer.entity';
 import { OrganizerMember } from '../../modules/organizers/entities/organizer-member.entity';
+import { EventCategory } from '../../modules/events/entities/event-category.entity';
+import { Event } from '../../modules/events/entities/event.entity';
+import { EventCategoriesEvents1791888001000 } from '../../database/migrations/1791888001000-EventCategoriesEvents';
 import { envValidationSchema } from '../env.validation';
 import { validateEnvironment } from '../validate-environment';
 import { databaseConnectionOptions } from './database.options';
@@ -17,9 +20,10 @@ const config = new ConfigService(
 
 export const dataSource = new DataSource({
   ...databaseConnectionOptions(config),
-  entities: [User, Organizer, OrganizerMember],
+  entities: [User, Organizer, OrganizerMember, EventCategory, Event],
   migrations: [
     BaselineUsersOrganizers1791888000000,
+    EventCategoriesEvents1791888001000,
     AdminRoleChanges1792454403000,
   ],
   migrationsTransactionMode: 'all',
