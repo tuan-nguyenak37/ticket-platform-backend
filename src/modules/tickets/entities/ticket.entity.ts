@@ -45,6 +45,15 @@ export class Ticket {
   status!: TicketStatus;
   @Column({ name: 'issued_at', type: 'timestamptz' })
   issuedAt!: Date;
+  @Column({ name: 'checked_in_at', type: 'timestamptz', nullable: true })
+  checkedInAt!: Date | null;
+  @Column({
+    name: 'checked_in_by',
+    type: 'varchar',
+    length: 40,
+    nullable: true,
+  })
+  checkedInBy!: string | null;
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })

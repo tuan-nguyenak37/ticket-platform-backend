@@ -7,6 +7,9 @@ Organizer, sự kiện và kiểm duyệt, đặt/giữ vé, VNPay, vé PDF/QR, 
 chi trả mô phỏng, thông báo trong web và thống kê tổng thu. Bản tích hợp hiện
 tại dùng cổng thử của VNPay; chưa có dịch vụ chuyển tiền thật cho người bán.
 
+Check-in xác minh QR theo suất diễn và ghi nhận vào cửa một lần, chỉ dành cho
+chủ ban tổ chức. Xem [hướng dẫn check-in](docs/ticket-check-in.md).
+
 ## Yêu cầu
 
 - Node.js 22.13 trở lên và npm 10 trở lên.
@@ -288,7 +291,8 @@ một cách tự động. Không sửa lịch sử migration đã áp dụng.
 
 - Thống kê hiển thị tổng thu, không khẳng định lợi nhuận hoặc tiền ngân hàng đã nhận.
 - Chi trả người bán dùng MOCK trong development/test, không chuyển tiền thật.
-- Không đưa lại check-in, mời nhân viên, OCR nhập vé hoặc API đối soát Admin.
+- Check-in chỉ dành cho chủ ban tổ chức; chưa bổ sung giao diện quét camera.
+- Không đưa lại mời nhân viên, OCR nhập vé hoặc API đối soát Admin.
 - TypeScript kiểm tra snapshot mã nguồn, không thay thế kiểm thử DB/trình duyệt/nhà cung cấp.
 - Theo yêu cầu, không chạy test, migration, seed hoặc thanh toán trong đợt commit này.
 - Tệp legacy và dữ liệu cục bộ không thuộc snapshot Git; xem `docs/source-scope.md`.

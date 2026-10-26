@@ -23,6 +23,7 @@ are HttpOnly, one-use and rotated atomically through Redis; access JWTs use Bear
 - [Reservations](order-reservations.md), [verified settlement](order-settlement.md)
 - [Payment primitives](payment-processing.md), [VNPay integration](vnpay-integration.md)
 - [Ticket issuance](ticket-issuance.md), [PDF/QR/email delivery](ticket-delivery.md)
+- [Owner-only ticket check-in](ticket-check-in.md)
 - [Resale](resale-v2.md), [storage compatibility](resale-storage.md),
   [seller payouts](automatic-payouts.md)
 - [Organizer sales reports](organizer-sales-reports.md)

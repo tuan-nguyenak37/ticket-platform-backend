@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { TicketsModule } from '../tickets/tickets.module';
+import { EventCheckInController } from './event-check-in.controller';
 import { UploadsModule } from '../../common/uploads/uploads.module';
 import { OrganizerMember } from '../organizers/entities/organizer-member.entity';
 import { EventCategory } from './entities/event-category.entity';
@@ -29,6 +31,7 @@ import { EventToolsService } from './event-tools.service';
 
 @Module({
   imports: [
+    TicketsModule,
     UploadsModule,
     TypeOrmModule.forFeature([
       EventCategory,
@@ -49,6 +52,7 @@ import { EventToolsService } from './event-tools.service';
     TicketTypesController,
     EventModerationController,
     EventToolsController,
+    EventCheckInController,
   ],
   providers: [
     EventsService,

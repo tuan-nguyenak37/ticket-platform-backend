@@ -22,6 +22,10 @@ No commands in this checklist were executed during the commit batch.
 6. Verify order/resale ownership, inventory, cancellation/expiry, credential
    revocation, current PDF export, account masking and database rollback.
    SMTP failure must not lose tickets or paid orders.
+   Verify owner-only check-in for the selected showing, invalid/revoked QR,
+   repeated/concurrent scans, time boundaries and resale/transfer races.
+   A duplicate result must not admit a second person. Apply the additive
+   TicketCheckIns migration after reviewing existing admission data.
 7. Verify payout/email worker restart, leases, duplicate protection and retries.
    MOCK payout processing is development/test only and moves no money.
    Production needs a real transfer provider and confirmed bank outcomes.

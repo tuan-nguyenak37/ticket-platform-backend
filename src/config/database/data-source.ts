@@ -42,6 +42,7 @@ import { VnpayTransaction } from '../../modules/payments/entities/vnpay-transact
 import { CheckoutSessions1792454400000 } from '../../database/migrations/1792454400000-CheckoutSessions';
 import { VnpayTransactions1792454401000 } from '../../database/migrations/1792454401000-VnpayTransactions';
 import { VnpayReconciliations1792454404000 } from '../../database/migrations/1792454404000-VnpayReconciliations';
+import { TicketCheckIns1792972800000 } from '../../database/migrations/1792972800000-TicketCheckIns';
 import { envValidationSchema } from '../env.validation';
 import { validateEnvironment } from '../validate-environment';
 import { databaseConnectionOptions } from './database.options';
@@ -97,6 +98,7 @@ export const dataSource = new DataSource({
     VnpayTransactions1792454401000,
     VnpayReconciliations1792454404000,
     WebNotifications1792540800000,
+    TicketCheckIns1792972800000,
   ],
   migrationsTransactionMode: 'all',
 });

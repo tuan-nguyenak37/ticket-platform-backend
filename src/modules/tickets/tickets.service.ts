@@ -136,6 +136,7 @@ export class TicketsService {
   ) {
     if (
       ticket.status !== TicketStatus.ACTIVE ||
+      !!ticket.checkedInAt ||
       ticket.ownerUserId !== sellerId
     )
       throw new ConflictException('Ticket ownership changed');
@@ -152,6 +153,8 @@ export class TicketsService {
         ticketId: ticket.ticketId,
         ownerUserId: sellerId,
         status: TicketStatus.ACTIVE,
+        checkedInAt: IsNull(),
+        checkedInBy: IsNull(),
       },
       { ownerUserId: buyerId },
     );
@@ -307,6 +310,7 @@ export class TicketsService {
     return {
       ticketId: ticket.ticketId,
       ticketNumber: ticket.ticketNumber,
+      checkedInAt: ticket.checkedInAt,
       orderId: ticket.orderItem.orderId,
       status: ticket.status,
       issuedAt: ticket.issuedAt,

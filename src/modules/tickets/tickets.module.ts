@@ -16,6 +16,7 @@ import { TicketPdfService } from './ticket-pdf.service';
 import { MailService } from './mail.service';
 import { TicketsService } from './tickets.service';
 import { TicketsController } from './tickets.controller';
+import { TicketCheckInService } from './ticket-check-in.service';
 
 @Module({
   imports: [
@@ -39,11 +40,13 @@ import { TicketsController } from './tickets.controller';
     TicketPdfService,
     MailService,
     TicketsService,
+    TicketCheckInService,
   ],
   exports: [
     TicketIssuanceService,
     TicketsService,
     TicketQrService,
+    TicketCheckInService,
     MailService,
   ],
 })

@@ -836,6 +836,7 @@ export class ResaleService {
     if (!context.ticketType.resaleAllowed) return 'RESALE_NOT_ALLOWED';
     if (context.ticket.status !== TicketStatus.ACTIVE)
       return 'TICKET_NOT_ACTIVE';
+    if (context.ticket.checkedInAt) return 'TICKET_ALREADY_CHECKED_IN';
     if (context.ticket.ownerUserId !== listing.sellerUserId)
       return 'TICKET_OWNER_CHANGED';
     if (!credential) return 'CREDENTIAL_MISSING';
@@ -853,6 +854,7 @@ export class ResaleService {
       return 'ORGANIZER_SUSPENDED';
     if (context.event.status !== EventStatus.PUBLISHED)
       return 'EVENT_NOT_PUBLIC';
+    if (context.ticket.checkedInAt) return 'TICKET_ALREADY_CHECKED_IN';
     if (
       context.ticketType.status !== TicketTypeStatus.ACTIVE ||
       !context.ticketType.resaleAllowed
@@ -973,6 +975,7 @@ export class ResaleService {
       )
       .andWhere('showing.startTime > clock_timestamp()')
       .andWhere('listing.bankName IS NOT NULL')
+      .andWhere('ticket.checkedInAt IS NULL')
       .andWhere(
         'listing.price > 0 AND listing.price <= floor("originalOrder".total_amount::numeric / item.quantity)',
       )

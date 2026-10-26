@@ -16,8 +16,9 @@ Configure a distinct TICKET_QR_SECRET (32+ characters). Enable SMTP with
 TICKET_EMAIL_ENABLED and SMTP_* values in the local environment, never Git.
 compose.email.yml provides a local mail catcher. Emails share the HTML/text
 template and attach the same current PDF. Email failure does not undo payment;
-tickets remain accessible and can be resent. Signed QR verification is an
-internal service, not a public check-in feature.
+tickets remain accessible and can be resent. Signed QR verification is reused
+by the owner-only check-in API described in ticket-check-in.md; it is not a
+public ticket-verification endpoint.
 
 Seller-notice types live separately from persistence to avoid a mail dependency
 on the future resale schema. Resale transfer helpers are internal and are not

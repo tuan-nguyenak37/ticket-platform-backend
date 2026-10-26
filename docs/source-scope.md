@@ -20,8 +20,9 @@ Previously applied migration files are not rewritten.
   IDs; category seeding is synthetic and independent of those snapshots.
 - Historical Postman collections, manual SQL/demo patches, old test reports,
   purchase/card/dispute/OCR fixtures and scripts targeting removed APIs.
-- OCR/scanner tools, check-in/operator endpoints and the legacy EventOperations
-  migration. The current scoped entities do not map check-in columns.
+- OCR/import tools, operator invitations/endpoints and the legacy EventOperations
+  migration. Owner-only check-in was subsequently approved; it uses the separate
+  TicketCheckIns migration and does not restore operator management.
 - Admin VNPay reconciliation/refund routes. The historically named recovery
   audit table is retained only for owner-scoped QueryDr throttling/history.
 - Unused auth scaffold entities/DTOs, MockPaymentDto, worker entrypoints that
@@ -34,3 +35,12 @@ presence is not authorization to stage them later. Working-tree differences
 against this curated history must be reviewed, not bulk-added or reset.
 The retained Git snapshot is not a claim that every legacy local file matches
 the new architecture or that acceptance testing has run.
+
+## Approved check-in extension
+
+Check-in verifies the current signed QR against the selected event/showing and
+records admission once under a ticket row lock. Only the Organizer owner can
+perform it. No public verifier, staff invitation or bank/payment API is added.
+Registration/discount compatibility migrations remain registered; the old
+EventOperations file is not reapplied. Existing check-in columns/data are kept.
+See ticket-check-in.md for the request, duplicate result and migration rules.
