@@ -24,7 +24,10 @@ export const environmentSchema = Joi.object({
   PAYMENT_PROVIDER: Joi.string()
     .valid('VNPAY', 'PROJECT')
     .default('VNPAY')
-    .when('NODE_ENV', { is: 'production', then: Joi.valid('VNPAY') }),
+    .when('NODE_ENV', {
+      is: 'production',
+      then: Joi.valid(Joi.override, 'VNPAY'),
+    }),
   VNPAY_TMN_CODE: Joi.string().trim().allow('').optional(),
   VNPAY_HASH_SECRET: Joi.string().allow('').optional(),
   VNPAY_QUERY_IP: Joi.string().ip().default('127.0.0.1'),

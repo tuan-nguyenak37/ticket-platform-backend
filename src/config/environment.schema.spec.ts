@@ -12,6 +12,19 @@ describe('Environment validation', () => {
     JWT_REFRESH_SECRET: 'different-unit-test-key-not-a-deployment-secret',
   };
 
+  it('rejects the project payment provider in production', () => {
+    const result = environmentSchema.validate({
+      ...databaseEnvironment,
+      NODE_ENV: 'production',
+      PAYMENT_PROVIDER: 'PROJECT',
+    });
+    expect(
+      result.error?.details.some(
+        (issue) => issue.path[0] === 'PAYMENT_PROVIDER',
+      ),
+    ).toBe(true);
+  });
+
   it('provides application and database defaults', () => {
     const result = environmentSchema.validate(databaseEnvironment);
     expect(result.error).toBeUndefined();
