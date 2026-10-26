@@ -2,8 +2,8 @@
 
 Nền tảng API NestJS của TicketVerse với cấu hình môi trường, kết nối PostgreSQL
 và mô hình người dùng, Redis và kho lưu phiên refresh.
-Bao gồm xác thực JWT và hồ sơ hiện tại; chưa bao gồm sự kiện, đặt vé, VNPay,
-bán lại vé hoặc API quản trị người dùng.
+Bao gồm xác thực JWT, hồ sơ cá nhân và quản lý người dùng; chưa bao gồm sự kiện,
+đặt vé, VNPay, bán lại vé, đổi vai trò hoặc thống kê quản trị.
 
 ## Yêu cầu
 
@@ -31,7 +31,7 @@ endpoint này không thực hiện kiểm tra sức khỏe database theo từng 
 
 ## Quy ước HTTP/API
 
-- API dùng prefix `/api`; hiện có các route xác thực và đọc hồ sơ chính mình.
+- API dùng prefix `/api`; gồm xác thực, hồ sơ cá nhân và quản lý người dùng.
 - DTO được kiểm tra bằng `ValidationPipe`: từ chối trường thừa, chuyển sang
   instance DTO, không tự bật chuyển kiểu dữ liệu ngầm. Route nhận body/query
   cần khai báo class DTO và decorator validation tương ứng.
@@ -99,7 +99,8 @@ Entity không tự băm mật khẩu. `UsersService.create` băm bằng bcrypt t
 lưu; `UserResponseDto` chỉ xuất các trường hồ sơ công khai, không có `password_hash`.
 
 `UsersModule` cung cấp repository, service nội bộ và `GET /api/users/me` có bảo vệ.
-Chưa có API quản trị hoặc tạo người dùng đặc quyền; chưa thêm tài khoản mẫu.
+Có API quản trị người dùng được mô tả trong `docs/user-administration.md`;
+không có API tạo người dùng đặc quyền, đổi vai trò hoặc tài khoản mẫu.
 
 ## Xác thực JWT
 

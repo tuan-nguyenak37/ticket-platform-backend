@@ -1,7 +1,9 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -19,6 +21,12 @@ import { UserRole } from './enums/user-role.enum';
 import { UserStatus } from './enums/user-status.enum';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateUserStatusDto } from './dto/update-user-status.dto';
+import {
+  assertAccountStatusManager,
+  assertUserAdministrator,
+} from '../auth/authorization/users.policy';
 
 @Injectable()
 export class UsersService {
@@ -117,6 +125,88 @@ export class UsersService {
       await repository.save(user);
       return { message: 'Đổi mật khẩu thành công, hãy đăng nhập lại' };
     });
+  }
+
+  async createForAdmin(actor: Principal, dto: CreateUserDto) {
+    assertUserAdministrator(actor);
+    return publicUser(await this.create(dto));
+  }
+
+  async findAll(actor: Principal) {
+    assertUserAdministrator(actor);
+    const users = await this.userRepository.find({
+      order: { created_at: 'DESC' },
+    });
+    return users.map((user) => publicUser(user));
+  }
+
+  async findOne(actor: Principal, id: string) {
+    assertUserAdministrator(actor);
+    return publicUser(await this.requireUser(id));
+  }
+
+  async update(actor: Principal, id: string, dto: UpdateUserDto) {
+    assertUserAdministrator(actor);
+    await this.requireUser(id);
+    if (dto.full_name === undefined && dto.phone_number === undefined) {
+      throw new BadRequestException(
+        'Cần cung cấp ít nhất một trường để cập nhật',
+      );
+    }
+    const result = await this.userRepository.update(
+      { user_id: id },
+      {
+        ...(dto.full_name !== undefined ? { full_name: dto.full_name } : {}),
+        ...(dto.phone_number !== undefined
+          ? { phone_number: dto.phone_number }
+          : {}),
+      },
+    );
+    if (result.affected !== 1)
+      throw new NotFoundException('Không tìm thấy người dùng để cập nhật');
+    return publicUser(await this.requireUser(id));
+  }
+
+  async updateStatus(actor: Principal, id: string, dto: UpdateUserStatusDto) {
+    assertAccountStatusManager(actor);
+    if (id === actor.user_id)
+      throw new ForbiddenException('Không được tự đổi trạng thái tài khoản');
+    return this.dataSource.transaction(async (manager) => {
+      const repository = manager.getRepository(User);
+      const locked = new Map<string, User>();
+      for (const userId of [actor.user_id, id].sort()) {
+        const user = await repository.findOne({
+          where: { user_id: userId },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!user) throw new NotFoundException('Không tìm thấy người dùng');
+        locked.set(userId, user);
+      }
+      const operator = locked.get(actor.user_id)!;
+      assertAccountStatusManager({
+        ...actor,
+        role: operator.role,
+        status: operator.status,
+      });
+      const user = locked.get(id)!;
+      if (
+        user.role === UserRole.ADMIN ||
+        (operator.role === UserRole.MODERATOR && user.role !== UserRole.USER)
+      ) {
+        throw new ForbiddenException('Không được đổi trạng thái tài khoản này');
+      }
+      if (user.status === dto.status) return publicUser(user);
+      if (dto.status === UserStatus.SUSPENDED)
+        await this.sessions.revokeAll(id);
+      user.status = dto.status;
+      return publicUser(await repository.save(user));
+    });
+  }
+
+  private async requireUser(id: string): Promise<User> {
+    const user = await this.findById(id);
+    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
+    return user;
   }
 
   private selfScope(actor: Principal) {
