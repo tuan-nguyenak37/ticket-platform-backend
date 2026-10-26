@@ -30,6 +30,13 @@ import { TicketCredential } from '../../modules/tickets/entities/ticket-credenti
 import { TicketOwnership } from '../../modules/tickets/entities/ticket-ownership.entity';
 import { IssuedTickets1791888006000 } from '../../database/migrations/1791888006000-IssuedTickets';
 import { WebNotifications1792540800000 } from '../../database/migrations/1792540800000-WebNotifications';
+import { ResaleListing } from '../../modules/resale/entities/resale-listing.entity';
+import { ResaleOrder } from '../../modules/resale/entities/resale-order.entity';
+import { ResalePayment } from '../../modules/resale/entities/resale-payment.entity';
+import { ResalePayout } from '../../modules/resale/entities/resale-payout.entity';
+import { ResaleEmail } from '../../modules/resale/entities/resale-email.entity';
+import { InternalResale1791888007000 } from '../../database/migrations/1791888007000-InternalResale';
+import { ResaleSellerSettlement1792454405000 } from '../../database/migrations/1792454405000-ResaleSellerSettlement';
 import { envValidationSchema } from '../env.validation';
 import { validateEnvironment } from '../validate-environment';
 import { databaseConnectionOptions } from './database.options';
@@ -59,6 +66,11 @@ export const dataSource = new DataSource({
     Ticket,
     TicketCredential,
     TicketOwnership,
+    ResaleEmail,
+    ResalePayout,
+    ResalePayment,
+    ResaleOrder,
+    ResaleListing,
   ],
   migrations: [
     BaselineUsersOrganizers1791888000000,
@@ -72,6 +84,8 @@ export const dataSource = new DataSource({
     OrderRegistrationDiscounts1792454402200,
     MockPayments1791888005000,
     IssuedTickets1791888006000,
+    InternalResale1791888007000,
+    ResaleSellerSettlement1792454405000,
     WebNotifications1792540800000,
   ],
   migrationsTransactionMode: 'all',
