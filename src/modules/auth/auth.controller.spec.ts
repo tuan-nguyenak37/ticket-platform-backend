@@ -27,7 +27,7 @@ describe('AuthController', () => {
     headers: { origin: 'http://localhost:3000' },
   } as AuthenticatedRequest;
   let controller: AuthController;
-  let authService: jest.Mocked<Partial<AuthService>>;
+  let authService: Partial<jest.Mocked<AuthService>>;
 
   const mockPrincipal: Principal & { email: string; full_name: string } = {
     user_id: 'usr_mock_001',
