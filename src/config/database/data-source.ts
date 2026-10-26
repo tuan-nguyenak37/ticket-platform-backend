@@ -15,6 +15,7 @@ import { TicketType } from '../../modules/events/ticket-types/entities/ticket-ty
 import { TicketInventory } from '../../modules/events/ticket-types/entities/ticket-inventory.entity';
 import { TicketTypesInventory1791888003000 } from '../../database/migrations/1791888003000-TicketTypesInventory';
 import { EventReviewLog } from '../../modules/events/entities/event-review-log.entity';
+import { EventRegistrationDiscounts1792454402100 } from '../../database/migrations/1792454402100-EventRegistrationDiscounts';
 import { envValidationSchema } from '../env.validation';
 import { validateEnvironment } from '../validate-environment';
 import { databaseConnectionOptions } from './database.options';
@@ -43,6 +44,7 @@ export const dataSource = new DataSource({
     Showings1791888002000,
     TicketTypesInventory1791888003000,
     AdminRoleChanges1792454403000,
+    EventRegistrationDiscounts1792454402100,
   ],
   migrationsTransactionMode: 'all',
 });

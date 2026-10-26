@@ -24,6 +24,8 @@ import {
 import { TicketTypesService } from './ticket-types/ticket-types.service';
 import { EventModerationController } from './events.controller';
 import { EventReviewLog } from './entities/event-review-log.entity';
+import { EventToolsController } from './event-tools.controller';
+import { EventToolsService } from './event-tools.service';
 
 @Module({
   imports: [
@@ -46,7 +48,13 @@ import { EventReviewLog } from './entities/event-review-log.entity';
     ShowingTicketTypesController,
     TicketTypesController,
     EventModerationController,
+    EventToolsController,
   ],
-  providers: [EventsService, ShowingsService, TicketTypesService],
+  providers: [
+    EventsService,
+    ShowingsService,
+    TicketTypesService,
+    EventToolsService,
+  ],
 })
 export class EventsModule {}

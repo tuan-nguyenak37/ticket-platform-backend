@@ -14,6 +14,7 @@ import { User } from '../../users/entities/user.entity';
 import { EventCategory } from './event-category.entity';
 import { EventStatus } from '../enums/event-status.enum';
 import { Showing } from '../showings/entities/showing.entity';
+import type { RegistrationQuestionDto } from '../event-tools.dto';
 
 @Entity('events')
 @Index('UQ_events_slug', ['slug'], { unique: true })
@@ -40,6 +41,13 @@ export class Event {
 
   @Column({ name: 'poster_url', type: 'text', nullable: true })
   posterUrl!: string | null;
+
+  @Column({
+    name: 'registration_questions',
+    type: 'jsonb',
+    default: () => "'[]'::jsonb",
+  })
+  registrationQuestions!: RegistrationQuestionDto[];
 
   @Column({
     type: 'enum',
