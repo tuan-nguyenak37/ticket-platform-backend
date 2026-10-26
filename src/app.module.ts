@@ -6,6 +6,7 @@ import { DatabaseModule } from './config/database/database.module';
 import { CoreModule } from './common/core.module';
 import { UsersModule } from './modules/users/users.module';
 import { SecurityModule } from './common/security/security.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { SecurityModule } from './common/security/security.module';
     CoreModule,
     UsersModule,
     SecurityModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -4,6 +4,7 @@ import {
   defaultFrontendOrigins,
 } from '../common/http/cors-origins';
 import { securityEnvironmentSchema } from './redis/redis.schema';
+import { authEnvironmentSchema } from './auth.schema';
 
 export const environmentSchema = Joi.object({
   NODE_ENV: Joi.string()
@@ -26,4 +27,6 @@ export const environmentSchema = Joi.object({
   DB_PASSWORD: Joi.string().required(),
   DB_NAME: Joi.string().trim().required(),
   DB_SYNCHRONIZE: Joi.boolean().valid(false).default(false),
-}).concat(securityEnvironmentSchema);
+})
+  .concat(securityEnvironmentSchema)
+  .concat(authEnvironmentSchema);

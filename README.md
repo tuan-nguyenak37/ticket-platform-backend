@@ -2,7 +2,8 @@
 
 Nền tảng API NestJS của TicketVerse với cấu hình môi trường, kết nối PostgreSQL
 và mô hình người dùng, Redis và kho lưu phiên refresh.
-Chưa bao gồm API xác thực, sự kiện, đặt vé, VNPay hoặc bán lại vé.
+Bao gồm xác thực JWT và hồ sơ hiện tại; chưa bao gồm sự kiện, đặt vé, VNPay,
+bán lại vé hoặc API quản trị người dùng.
 
 ## Yêu cầu
 
@@ -30,7 +31,7 @@ endpoint này không thực hiện kiểm tra sức khỏe database theo từng 
 
 ## Quy ước HTTP/API
 
-- API dùng prefix `/api`. Chưa có các route nghiệp vụ trong snapshot này.
+- API dùng prefix `/api`; hiện có các route xác thực và đọc hồ sơ chính mình.
 - DTO được kiểm tra bằng `ValidationPipe`: từ chối trường thừa, chuyển sang
   instance DTO, không tự bật chuyển kiểu dữ liệu ngầm. Route nhận body/query
   cần khai báo class DTO và decorator validation tương ứng.
@@ -66,7 +67,7 @@ hoặc kiểm tra Origin/CSRF cho các nghiệp vụ nhạy cảm.
   dấu gạch ngang/gạch dưới, dài 1–60 ký tự.
 - `JWT_ACCESS_SECRET` bắt buộc, production tối thiểu 32 ký tự. Thay giá trị mẫu
   bằng chuỗi ngẫu nhiên riêng; ở commit này dùng làm khóa HMAC che ID trong key
-  Redis. Chưa phát hành hoặc xác minh JWT.
+  Redis và ký access JWT. Refresh JWT dùng secret riêng, không được trùng.
 - Kết nối lúc khởi động được giới hạn 10 giây và phải nhận `PONG`. Redis lỗi
   làm khởi động thất bại; lỗi thao tác trả 503, không tự coi phiên là hợp lệ.
 - Tắt hàng đợi lệnh offline; mỗi lệnh có timeout 3 giây và giới hạn retry.
@@ -80,10 +81,9 @@ phiên hết hạn/bị thu hồi nhận 401. Token mới phải khác token cũ
 nguyên dương và xoay token không vượt deadline ban đầu. Có thu hồi một phiên
 hoặc toàn bộ phiên của người dùng.
 
-Kho phiên không xác minh chữ ký JWT hoặc trạng thái tài khoản, không quản lý
-cookie và không cung cấp HTTP endpoint. API xác thực ở commit tiếp theo phải
-xác minh JWT, chủ sở hữu, trạng thái tài khoản và tuổi phiên trước khi gọi kho;
-mỗi lần đăng nhập phải sinh session ID mới. Mất dữ liệu Redis sẽ thu hồi phiên;
+Kho phiên không tự xác minh chữ ký JWT hoặc trạng thái tài khoản và không quản lý
+cookie. Lớp xác thực thực hiện các bước đó trước khi gọi kho; mỗi lần đăng nhập
+sinh session ID mới. Mất dữ liệu Redis sẽ thu hồi phiên;
 production cần cấu hình persistence, TLS/ACL và tránh eviction cho kho bảo mật.
 Đổi `JWT_ACCESS_SECRET` cũng làm các key phiên cũ không còn truy cập được.
 
@@ -95,11 +95,56 @@ nghiệm thu Lua đồng thời bằng Redis thật. Chưa chạy test trong đ�
 `User` ánh xạ bảng `users`: ID chuỗi tự sinh, email duy nhất, tên, trường
 `password_hash`, thông tin liên hệ, vai trò, trạng thái và các mốc thời gian.
 Vai trò gồm `USER`, `MODERATOR`, `ADMIN`; trạng thái gồm `ACTIVE`, `SUSPENDED`.
-Entity không tự băm mật khẩu. Luồng tạo tài khoản ở commit xác thực phải băm
-mật khẩu trước khi lưu và không trả `password_hash` qua API.
+Entity không tự băm mật khẩu. `UsersService.create` băm bằng bcrypt trước khi
+lưu; `UserResponseDto` chỉ xuất các trường hồ sơ công khai, không có `password_hash`.
 
-Chưa đăng ký controller hoặc API hồ sơ, tạo người dùng, quản trị hay đăng nhập.
-`UsersModule` chỉ đăng ký repository TypeORM. Chưa thêm dữ liệu người dùng mẫu.
+`UsersModule` cung cấp repository, service nội bộ và `GET /api/users/me` có bảo vệ.
+Chưa có API quản trị hoặc tạo người dùng đặc quyền; chưa thêm tài khoản mẫu.
+
+## Xác thực JWT
+
+Các route web đang dùng:
+
+| Phương thức | Route | Chức năng |
+| --- | --- | --- |
+| POST | `/api/auth/register` | Đăng ký người dùng thường, chỉ trả hồ sơ |
+| POST | `/api/auth/browser/login` | Đăng nhập, trả access token và đặt refresh cookie |
+| POST | `/api/auth/browser/refresh` | Xoay refresh cookie, trả access token mới |
+| POST | `/api/auth/browser/logout` | Thu hồi phiên và xóa cookie, không cần access còn hạn |
+| GET | `/api/auth/browser/session` | Hồ sơ cho SSR; không cấp access hoặc xoay refresh |
+| GET | `/api/users/me` | Hồ sơ chính mình, yêu cầu Bearer access JWT |
+
+POST có thay đổi cookie phải có `Origin` nằm trong `FRONTEND_URL`. Refresh JWT
+web chỉ ở cookie `ticketverse_refresh`, HttpOnly, SameSite=Lax, Path=/, Secure
+ở production; không trả refresh token qua JSON. Phản hồi auth/hồ sơ đặt
+`Cache-Control: no-store`. SSR chỉ trả hồ sơ và kiểm tra hash hiện hành; cookie
+refresh không được dùng làm thông tin xác thực cho API nghiệp vụ.
+
+Access JWT mặc định `15m`, phiên tối đa `JWT_REFRESH_EXPIRES=7d` tính từ đăng nhập.
+Token ký HS256 với secret riêng cho access/refresh và `jti` ngẫu nhiên. Tuổi token
+được chặn bởi deadline phiên; xoay refresh không kéo dài deadline. Hết access trả
+`401 AUTH_ACCESS_EXPIRED` trước nghiệp vụ. Token refresh đã xoay trả
+`409 AUTH_REFRESH_CONFLICT` và không đặt/xóa cookie; token sai hoặc phiên bị
+thu hồi trả 401. Redis/mạng lỗi trả 503, không giả định người dùng đã đăng xuất.
+
+Guard toàn cục yêu cầu mỗi route khai báo rõ `Public`, `Authenticated`,
+`OptionalAuth` hoặc `Roles`; thiếu/chồng chính sách bị từ chối. Guard đọc trạng
+thái, vai trò hiện hành từ DB và kiểm tra phiên Redis, không chỉ tin claims JWT.
+Giới hạn tần suất dùng Redis theo mạng nguồn và email đăng nhập, trả 429 kèm
+`Retry-After`. `TRUST_PROXY` chỉ được cấu hình bằng proxy/subnet thực sự tin cậy;
+để trống khi chạy trực tiếp, không tin `X-Forwarded-For` từ mọi nguồn.
+
+Giữ `/api/auth/login`, `/api/auth/refresh`, `/api/auth/logout` để tương thích
+client cũ, cũng kiểm tra Origin. Chúng dùng cookie `refresh_token` ở Path=/api/auth;
+logout cũ yêu cầu access còn hợp lệ. Web dùng các route `/browser/*` để đăng xuất
+được cả khi access đã hết hạn. Cookie opaque `ticketverse_session` cũ không còn
+được xác thực; người dùng cũ cần đăng nhập lại một lần.
+
+`JWT_REFRESH_SECRET` bắt buộc và khác `JWT_ACCESS_SECRET`; ở production cả hai
+tối thiểu 32 ký tự ngẫu nhiên. `JWT_ACCESS_EXPIRES`/`JWT_REFRESH_EXPIRES` nhận số
+giây hoặc hậu tố `s`, `m`, `h`, `d`, `w`, mặc định `15m`/`7d`. Không commit `.env`,
+không ghi mật khẩu, token, cookie hoặc secret vào log. Không lưu refresh token
+trong bộ nhớ trình duyệt; access token do client giữ trong bộ nhớ ngắn hạn.
 
 Migration `BaselineUsersOrganizers1791888000000` được giữ nguyên tên và SQL từ
 dự án hiện tại: tạo bảng `users`, `organizers`, `organizer_members` và các enum,
@@ -149,6 +194,7 @@ $env:DB_USERNAME = 'ticketverse'
 $env:DB_PASSWORD = 'your-local-test-password'
 $env:DB_NAME = 'ticketverse_test'
 $env:JWT_ACCESS_SECRET = 'local-test-key-not-a-real-deployment-secret'
+$env:JWT_REFRESH_SECRET = 'different-local-test-key-not-a-deployment-secret'
 $env:RUN_DATABASE_TESTS = 'true'
 npm test -- --runInBand
 ```
@@ -172,7 +218,8 @@ npm run start:prod
 - `src/config/`: validation môi trường và module cấu hình dùng chung.
 - `src/config/database/`: kết nối PostgreSQL và kiểm thử cấu hình/kết nối.
 - `src/database/`: migration baseline và chương trình chạy migration.
-- `src/modules/users/`: entity, enum và đăng ký repository; chưa mở HTTP API.
+- `src/modules/users/`: mô hình người dùng, service nội bộ và hồ sơ chính mình.
+- `src/modules/auth/`: JWT, cookie, đăng ký/đăng nhập và các guard.
 - `src/common/`: validation HTTP, CORS, filter lỗi và interceptor phản hồi.
 - `.env.example`: cấu hình mẫu; không commit `.env` hoặc secrets.
 
