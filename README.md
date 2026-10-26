@@ -1,6 +1,7 @@
 # TicketVerse Backend
 
-Nền tảng API NestJS của TicketVerse với cấu hình môi trường và kết nối PostgreSQL.
+Nền tảng API NestJS của TicketVerse với cấu hình môi trường, kết nối PostgreSQL
+và mô hình người dùng.
 Chưa bao gồm xác thực, sự kiện, đặt vé, VNPay hoặc bán lại vé.
 
 ## Yêu cầu
@@ -53,9 +54,43 @@ hoặc kiểm tra Origin/CSRF cho các nghiệp vụ nhạy cảm.
 - Bắt buộc: `DB_HOST`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME`.
 - Mặc định: `DB_PORT=5432`, `PORT=7000`, `NODE_ENV=development`.
 - `DB_SYNCHRONIZE` chỉ chấp nhận `false`; không tự tạo, sửa hoặc xóa bảng.
-- Không tự chạy migration. Chưa có entity hoặc migration nghiệp vụ ở bước này.
+- Không tự chạy migration khi server khởi động. Chạy migration bằng lệnh riêng.
 - Thử kết nối tối đa 3 lần, cách nhau 1 giây; lỗi kết nối làm khởi động thất bại.
 - Không dùng tài khoản superuser cho ứng dụng và không commit `.env`.
+
+## Người dùng và migration ban đầu
+
+`User` ánh xạ bảng `users`: ID chuỗi tự sinh, email duy nhất, tên, trường
+`password_hash`, thông tin liên hệ, vai trò, trạng thái và các mốc thời gian.
+Vai trò gồm `USER`, `MODERATOR`, `ADMIN`; trạng thái gồm `ACTIVE`, `SUSPENDED`.
+Entity không tự băm mật khẩu. Luồng tạo tài khoản ở commit xác thực phải băm
+mật khẩu trước khi lưu và không trả `password_hash` qua API.
+
+Chưa đăng ký controller hoặc API hồ sơ, tạo người dùng, quản trị hay đăng nhập.
+`UsersModule` chỉ đăng ký repository TypeORM. Chưa thêm dữ liệu người dùng mẫu.
+
+Migration `BaselineUsersOrganizers1791888000000` được giữ nguyên tên và SQL từ
+dự án hiện tại: tạo bảng `users`, `organizers`, `organizer_members` và các enum,
+khóa ngoại/index tương ứng. Schema Organizer là một phần của baseline gốc,
+không đồng nghĩa đã đưa module hoặc API Organizer vào commit này. Không tách,
+đổi tên hoặc sửa migration cũ đã áp dụng trên database hiện có.
+
+Sau khi tạo một database trống và cấu hình `.env` đúng, chủ động chạy:
+
+```powershell
+npm run db:migrate
+npm run start:dev
+```
+
+Lệnh migration build trước khi chạy. Môi trường đã build dùng
+`npm run db:migrate:prod`. TypeORM lưu các migration đã áp dụng trong bảng
+`migrations`, chỉ chạy migration còn thiếu và dùng một transaction cho cả lượt.
+Kết nối CLI dùng cùng validation và thiết lập an toàn như server.
+
+Snapshot hiện chỉ đăng ký baseline; không dùng nó để thay thế bộ migration
+đầy đủ của ứng dụng đang phát triển. Database hiện có phải giữ nguyên lịch sử;
+không xóa bảng `migrations`, không đánh dấu baseline chưa chạy và không chạy
+`down` tùy tiện: `down` của baseline sẽ xóa cả ba bảng cùng dữ liệu.
 
 ## Kiểm tra
 
@@ -103,6 +138,8 @@ npm run start:prod
 - `src/app.controller.spec.ts`: kiểm tra service, HTTP thành công và 404.
 - `src/config/`: validation môi trường và module cấu hình dùng chung.
 - `src/config/database/`: kết nối PostgreSQL và kiểm thử cấu hình/kết nối.
+- `src/database/`: migration baseline và chương trình chạy migration.
+- `src/modules/users/`: entity, enum và đăng ký repository; chưa mở HTTP API.
 - `src/common/`: validation HTTP, CORS, filter lỗi và interceptor phản hồi.
 - `.env.example`: cấu hình mẫu; không commit `.env` hoặc secrets.
 
