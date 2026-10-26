@@ -36,11 +36,13 @@ transaction phân tán; cần kiểm chứng bằng DB/Redis thật trước tri
 Audit interceptor ghi request ID, actor ID, action, target ID, kết quả và mã lỗi;
 tài khoản được tạo dùng ID của kết quả tạo. Không log body, mật khẩu, hash,
 headers, cookie, token hay toàn bộ lỗi. Lý do đổi trạng thái được kiểm tra đầu
-vào nhưng không lưu trong log; đợt này chưa thêm bảng nhật ký bền vững hoặc API
+vào nhưng không lưu trong log; nhật ký quản lý chung chưa có bảng DB hoặc API
 đọc audit. Sự kiện audit đi vào logger vận hành, không phải transaction DB.
+Riêng đổi vai trò có bảng nhật ký riêng, xem `user-role-changes.md`.
 
 Giữ dạng danh sách mảng để tương thích frontend hiện tại; chưa thêm phân trang
-trong commit này. Không gồm thống kê dashboard hoặc API đổi vai trò.
+trong commit này. Không gồm thống kê dashboard. API đổi vai trò được mô tả riêng
+trong `user-role-changes.md`.
 
 Các test quyền truy cập, tạo/sửa tài khoản, khóa/mở khóa, kiểm tra quyền sau khóa
 hàng, lỗi Redis, validation và audit được bổ sung nhưng không chạy theo yêu cầu.

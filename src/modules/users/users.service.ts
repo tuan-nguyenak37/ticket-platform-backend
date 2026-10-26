@@ -21,6 +21,8 @@ import { UserRole } from './enums/user-role.enum';
 import { UserStatus } from './enums/user-status.enum';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateUserRoleDto } from './dto/update-user-role.dto';
+import { generateId } from '../../common/utils/generateId';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import {
@@ -199,6 +201,61 @@ export class UsersService {
       if (dto.status === UserStatus.SUSPENDED)
         await this.sessions.revokeAll(id);
       user.status = dto.status;
+      return publicUser(await repository.save(user));
+    });
+  }
+
+  async updateRole(actor: Principal, id: string, dto: UpdateUserRoleDto) {
+    assertUserAdministrator(actor);
+    if (actor.user_id === id)
+      throw new ForbiddenException('Không được tự đổi vai trò');
+    const editableRoles = [UserRole.USER, UserRole.MODERATOR];
+    if (
+      !editableRoles.includes(dto.role) ||
+      !editableRoles.includes(dto.expectedRole)
+    ) {
+      throw new BadRequestException('Chỉ được đổi vai trò USER và MODERATOR');
+    }
+    const reason = typeof dto.reason === 'string' ? dto.reason.trim() : '';
+    if (!reason || Array.from(reason).length > 1000) {
+      throw new BadRequestException(
+        'Lý do thay đổi vai trò phải dài 1–1000 ký tự',
+      );
+    }
+    return this.dataSource.transaction(async (manager) => {
+      const repository = manager.getRepository(User);
+      const locked = new Map<string, User>();
+      for (const userId of [actor.user_id, id].sort()) {
+        const user = await repository.findOne({
+          where: { user_id: userId },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!user) throw new NotFoundException('Không tìm thấy người dùng');
+        locked.set(userId, user);
+      }
+      const administrator = locked.get(actor.user_id)!;
+      assertUserAdministrator({
+        ...actor,
+        role: administrator.role,
+        status: administrator.status,
+      });
+      const user = locked.get(id)!;
+      if (user.role === UserRole.ADMIN)
+        throw new ForbiddenException('Không được thay đổi vai trò ADMIN');
+      if (user.status !== UserStatus.ACTIVE)
+        throw new ConflictException('Chỉ đổi vai trò tài khoản đang hoạt động');
+      if (user.role !== dto.expectedRole)
+        throw new ConflictException(
+          'Vai trò đã thay đổi, hãy tải lại danh sách',
+        );
+      if (user.role === dto.role)
+        throw new BadRequestException('Vai trò mới phải khác vai trò hiện tại');
+      await this.sessions.revokeAll(id);
+      await manager.query(
+        `INSERT INTO user_role_changes(change_id,actor_id,target_id,previous_role,new_role,reason) VALUES($1,$2,$3,$4,$5,$6)`,
+        [generateId('rolechg'), actor.user_id, id, user.role, dto.role, reason],
+      );
+      user.role = dto.role;
       return publicUser(await repository.save(user));
     });
   }

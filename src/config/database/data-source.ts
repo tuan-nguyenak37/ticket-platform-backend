@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { BaselineUsersOrganizers1791888000000 } from '../../database/migrations/1791888000000-BaselineUsersOrganizers';
+import { AdminRoleChanges1792454403000 } from '../../database/migrations/1792454403000-AdminRoleChanges';
 import { User } from '../../modules/users/entities/user.entity';
 import { envValidationSchema } from '../env.validation';
 import { validateEnvironment } from '../validate-environment';
@@ -15,6 +16,9 @@ const config = new ConfigService(
 export const dataSource = new DataSource({
   ...databaseConnectionOptions(config),
   entities: [User],
-  migrations: [BaselineUsersOrganizers1791888000000],
+  migrations: [
+    BaselineUsersOrganizers1791888000000,
+    AdminRoleChanges1792454403000,
+  ],
   migrationsTransactionMode: 'all',
 });

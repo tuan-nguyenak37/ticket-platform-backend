@@ -3,7 +3,8 @@
 Nền tảng API NestJS của TicketVerse với cấu hình môi trường, kết nối PostgreSQL
 và mô hình người dùng, Redis và kho lưu phiên refresh.
 Bao gồm xác thực JWT, hồ sơ cá nhân và quản lý người dùng; chưa bao gồm sự kiện,
-đặt vé, VNPay, bán lại vé, đổi vai trò hoặc thống kê quản trị.
+đặt vé, VNPay, bán lại vé hoặc thống kê quản trị. Có đổi vai trò USER/MODERATOR
+với nhật ký bền vững và thu hồi phiên.
 
 ## Yêu cầu
 
@@ -100,7 +101,8 @@ lưu; `UserResponseDto` chỉ xuất các trường hồ sơ công khai, không 
 
 `UsersModule` cung cấp repository, service nội bộ và `GET /api/users/me` có bảo vệ.
 Có API quản trị người dùng được mô tả trong `docs/user-administration.md`;
-không có API tạo người dùng đặc quyền, đổi vai trò hoặc tài khoản mẫu.
+không có API tạo ADMIN hoặc tài khoản mẫu. API đổi vai trò USER/MODERATOR được
+mô tả riêng trong `docs/user-role-changes.md`.
 
 ## Xác thực JWT
 
@@ -167,7 +169,8 @@ Lệnh migration build trước khi chạy. Môi trường đã build dùng
 `migrations`, chỉ chạy migration còn thiếu và dùng một transaction cho cả lượt.
 Kết nối CLI dùng cùng validation và thiết lập an toàn như server.
 
-Snapshot hiện chỉ đăng ký baseline; không dùng nó để thay thế bộ migration
+Snapshot hiện đăng ký baseline và migration nhật ký đổi vai trò; không dùng nó
+để thay thế bộ migration
 đầy đủ của ứng dụng đang phát triển. Database hiện có phải giữ nguyên lịch sử;
 không xóa bảng `migrations`, không đánh dấu baseline chưa chạy và không chạy
 `down` tùy tiện: `down` của baseline sẽ xóa cả ba bảng cùng dữ liệu.
@@ -244,7 +247,7 @@ npm run start:prod
 - `src/app.controller.spec.ts`: kiểm tra service, HTTP thành công và 404.
 - `src/config/`: validation môi trường và module cấu hình dùng chung.
 - `src/config/database/`: kết nối PostgreSQL và kiểm thử cấu hình/kết nối.
-- `src/database/`: migration baseline và chương trình chạy migration.
+- `src/database/`: baseline, migration nhật ký đổi vai trò và chương trình chạy migration.
 - `src/modules/users/`: mô hình người dùng, service nội bộ và hồ sơ chính mình.
 - `src/modules/auth/`: JWT, cookie, đăng ký/đăng nhập và các guard.
 - `src/common/`: validation HTTP, CORS, filter lỗi và interceptor phản hồi.

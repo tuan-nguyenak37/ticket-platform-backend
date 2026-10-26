@@ -27,6 +27,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { UpdateUserStatusDto, UserIdDto } from './dto/update-user-status.dto';
 import { UserRole } from './enums/user-role.enum';
 import { Audit } from '../auth/authorization/audit.interceptor';
@@ -110,5 +111,17 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
   ) {
     return this.users.update(actor, id, dto);
+  }
+
+  @Patch(':id/role')
+  @Roles(UserRole.ADMIN)
+  @Header('Cache-Control', 'no-store')
+  @Audit('users.role.update')
+  updateRole(
+    @CurrentUser() actor: Principal,
+    @Param() params: UserIdDto,
+    @Body() dto: UpdateUserRoleDto,
+  ) {
+    return this.users.updateRole(actor, params.id, dto);
   }
 }
