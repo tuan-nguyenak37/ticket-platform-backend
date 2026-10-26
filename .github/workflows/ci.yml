@@ -44,7 +44,7 @@ jobs:
       JWT_REFRESH_SECRET: different-ci-only-key-not-a-deployment-secret
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
