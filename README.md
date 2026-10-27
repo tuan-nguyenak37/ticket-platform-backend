@@ -18,8 +18,6 @@ cấp API quản lý sự kiện, đặt vé, thanh toán, phát hành vé đi�
 - [Lệnh phát triển](#lệnh-phát-triển)
 - [Cấu trúc dự án](#cấu-trúc-dự-án)
 - [Tài liệu](#tài-liệu)
-- [Đóng góp](#đóng-góp)
-- [Giấy phép](#giấy-phép)
 
 ## Tổng quan
 
@@ -207,18 +205,3 @@ src/
 - [Bán lại vé](docs/resale-v2.md) và [chi trả người bán](docs/automatic-payouts.md)
 - [Báo cáo Organizer](docs/organizer-sales-reports.md) và [thống kê Admin](docs/admin-statistics.md)
 - [Checklist phát hành](docs/release-checklist.md)
-
-## Đóng góp
-
-Đọc [CONTRIBUTING](CONTRIBUTING.md) trước khi gửi thay đổi. Dùng nhánh riêng,
-commit theo Conventional Commits và mở pull request vào `main`. Thay đổi API,
-schema hoặc cấu hình cần cập nhật tài liệu tương ứng.
-
-Lỗ hổng bảo mật phải được báo riêng theo [SECURITY](SECURITY.md), không đưa
-secret hoặc bằng chứng nhạy cảm vào issue công khai.
-
-## Giấy phép
-
-Dự án khai báo `UNLICENSED`, chưa cung cấp giấy phép mã nguồn mở. Tài nguyên bên
-thứ ba có điều khoản riêng; thông tin font PDF nằm trong
-[tài liệu tài nguyên](src/modules/tickets/assets/SOURCE.md).
