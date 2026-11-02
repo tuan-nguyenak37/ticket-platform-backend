@@ -1,58 +1,58 @@
-name: ticketverse-backend-cicd
+name: ticketverse-backend-production
 
 services:
   # -------------------------------------------------------------
-  # 1. C? s? d? li?u PostgreSQL 16 (D?ng th?ng s? m?u an to?n cho CI/CD)
+  # 1. C? s? d? li?u PostgreSQL 16 (Deploy th?c t?)
   # -------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
-    container_name: ticketverse-postgres-cicd
-    restart: unless-stopped
+    container_name: ticketverse-postgres-prod
+    restart: always
     environment:
-      POSTGRES_DB: ticketverse_cicd
-      POSTGRES_USER: ticketverse_ci
-      POSTGRES_PASSWORD: ci_test_postgres_password_2026
+      POSTGRES_DB: passve_v2
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
     ports:
       - "5432:5432"
     volumes:
-      - postgres_cicd_data:/var/lib/postgresql/data
+      - postgres_prod_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ticketverse_ci -d ticketverse_cicd"]
+      test: ["CMD-SHELL", "pg_isready -U myuser -d passve_v2"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
-      - cicd-network
+      - prod-network
 
   # -------------------------------------------------------------
-  # 2. B? nh? ??m Redis 7
+  # 2. B? nh? ??m & Kh?a gi? ch? Redis 7 (Deploy th?c t?)
   # -------------------------------------------------------------
   redis:
     image: redis:7-alpine
-    container_name: ticketverse-redis-cicd
-    restart: unless-stopped
+    container_name: ticketverse-redis-prod
+    restart: always
     command: redis-server --appendonly yes
     ports:
       - "6379:6379"
     volumes:
-      - redis_cicd_data:/data
+      - redis_prod_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
-      - cicd-network
+      - prod-network
 
   # -------------------------------------------------------------
-  # 3. M?y ch? Backend NestJS (C?u h?nh s?n gi? l?p cho CI/CD)
+  # 3. M?y ch? Backend NestJS 11 (C?u h?nh ch?y th?c t? ho?n ch?nh)
   # -------------------------------------------------------------
   backend:
-    container_name: ticketverse-backend-cicd
+    container_name: ticketverse-backend-prod
     build:
       context: ..
       dockerfile: Dockerfile
-    restart: unless-stopped
+    restart: always
     ports:
       - "7000:7000"
     environment:
@@ -63,32 +63,38 @@ services:
       UPLOAD_DIR: uploads
       UPLOAD_MAX_FILE_SIZE_MB: 10
 
-      # Database PostgreSQL
+      # Database PostgreSQL th?c t?
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: ticketverse_cicd
-      DB_USERNAME: ticketverse_ci
-      DB_PASSWORD: ci_test_postgres_password_2026
+      DB_NAME: passve_v2
+      DB_USERNAME: myuser
+      DB_PASSWORD: mypassword
       DB_SYNCHRONIZE: "false"
 
-      # Redis Cache & Lock
+      # Redis th?c t?
       SECURITY_REDIS_URL: redis://redis:6379/1
       SECURITY_REDIS_PREFIX: ticketverse-security
 
-      # Chu?i kh?a b?o m?t gi? l?p chuy?n d?ng cho CI/CD (Kh?ng d?ng kh?a th?t)
-      JWT_ACCESS_SECRET: cicd_only_jwt_access_secret_key_minimum_32_chars
+      # Chu?i kh?a b?o m?t JWT & QR
+      JWT_ACCESS_SECRET: ticketverse_jwt_access_super_secret_key_production_2026
       JWT_ACCESS_EXPIRES: 15m
-      JWT_REFRESH_SECRET: cicd_only_jwt_refresh_secret_key_minimum_32_chars
+      JWT_REFRESH_SECRET: ticketverse_jwt_refresh_super_secret_key_production_2026
       JWT_REFRESH_EXPIRES: 7d
-      TICKET_QR_SECRET: cicd_only_ticket_qr_signing_secret_minimum_32_chars
+      TICKET_QR_SECRET: 0a554bbca7060d6ff52a59886d63e2fba3b03735041a89dfcc8cff8c87abd903
 
-      # T?t email th?c t? trong m?i tr??ng CI/CD
-      TICKET_EMAIL_ENABLED: "false"
+      # G?i email v? ?i?n t? th?c t? qua Gmail SMTP
+      TICKET_EMAIL_ENABLED: "true"
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: 587
+      SMTP_SECURE: "false"
+      SMTP_USER: 23050150@student.bdu.edu.vn
+      SMTP_PASS: guswenxaxwjbhlzn
+      SMTP_FROM: 23050150@student.bdu.edu.vn
 
-      # C?ng thanh to?n VNPay Mock cho CI/CD
+      # C?ng thanh to?n VNPay Sandbox th?c t?
       PAYMENT_PROVIDER: VNPAY
-      VNPAY_TMN_CODE: CI_MOCK_TMN_CODE
-      VNPAY_HASH_SECRET: ci_mock_vnpay_hash_secret_key_minimum_32_chars
+      VNPAY_TMN_CODE: W6226CVC
+      VNPAY_HASH_SECRET: SNCSKZWRALELCJWBLVYXFKGTDXRFJPXW
       VNPAY_QUERY_IP: 127.0.0.1
       VNPAY_RETURN_URL: http://localhost:7000/api/v1/payments/vnpay/return
       VNPAY_FRONTEND_URL: http://localhost:3000
@@ -96,26 +102,26 @@ services:
       # Worker ??i so?t chuy?n nh??ng v?
       RESALE_SETTLEMENT_WORKER_ENABLED: "true"
     volumes:
-      - backend_cicd_uploads:/app/uploads
+      - backend_prod_uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks:
-      - cicd-network
+      - prod-network
 
 # -------------------------------------------------------------
-# Ph?n v?ng l?u tr? & M?ng n?i b? ri?ng cho CI/CD
+# Ph?n v?ng l?u tr? & M?ng n?i b?
 # -------------------------------------------------------------
 volumes:
-  postgres_cicd_data:
+  postgres_prod_data:
     driver: local
-  redis_cicd_data:
+  redis_prod_data:
     driver: local
-  backend_cicd_uploads:
+  backend_prod_uploads:
     driver: local
 
 networks:
-  cicd-network:
+  prod-network:
     driver: bridge
