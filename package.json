@@ -26,7 +26,10 @@
     "seed:categories": "npm run build && node dist/database/seeds/run-seed.js",
     "docker:up": "docker compose --env-file .env.docker up -d --build",
     "docker:down": "docker compose --env-file .env.docker down",
-    "docker:logs": "docker compose --env-file .env.docker logs -f backend"
+    "docker:logs": "docker compose --env-file .env.docker logs -f backend",
+    "cicd:up": "docker compose -f cicd/docker-compose.yml up -d --build",
+    "cicd:down": "docker compose -f cicd/docker-compose.yml down -v",
+    "cicd:logs": "docker compose -f cicd/docker-compose.yml logs -f backend"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

@@ -1,0 +1,121 @@
+name: ticketverse-backend-cicd
+
+services:
+  # -------------------------------------------------------------
+  # 1. C? s? d? li?u PostgreSQL 16 (D?ng th?ng s? m?u an to?n cho CI/CD)
+  # -------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: ticketverse-postgres-cicd
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ticketverse_cicd
+      POSTGRES_USER: ticketverse_ci
+      POSTGRES_PASSWORD: ci_test_postgres_password_2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_cicd_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticketverse_ci -d ticketverse_cicd"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cicd-network
+
+  # -------------------------------------------------------------
+  # 2. B? nh? ??m Redis 7
+  # -------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: ticketverse-redis-cicd
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_cicd_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cicd-network
+
+  # -------------------------------------------------------------
+  # 3. M?y ch? Backend NestJS (C?u h?nh s?n gi? l?p cho CI/CD)
+  # -------------------------------------------------------------
+  backend:
+    container_name: ticketverse-backend-cicd
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "7000:7000"
+    environment:
+      NODE_ENV: development
+      PORT: 7000
+      FRONTEND_URL: http://localhost:3000,http://localhost:5173
+      RATE_LIMIT_MAX: 120
+      UPLOAD_DIR: uploads
+      UPLOAD_MAX_FILE_SIZE_MB: 10
+
+      # Database PostgreSQL
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ticketverse_cicd
+      DB_USERNAME: ticketverse_ci
+      DB_PASSWORD: ci_test_postgres_password_2026
+      DB_SYNCHRONIZE: "false"
+
+      # Redis Cache & Lock
+      SECURITY_REDIS_URL: redis://redis:6379/1
+      SECURITY_REDIS_PREFIX: ticketverse-security
+
+      # Chu?i kh?a b?o m?t gi? l?p chuy?n d?ng cho CI/CD (Kh?ng d?ng kh?a th?t)
+      JWT_ACCESS_SECRET: cicd_only_jwt_access_secret_key_minimum_32_chars
+      JWT_ACCESS_EXPIRES: 15m
+      JWT_REFRESH_SECRET: cicd_only_jwt_refresh_secret_key_minimum_32_chars
+      JWT_REFRESH_EXPIRES: 7d
+      TICKET_QR_SECRET: cicd_only_ticket_qr_signing_secret_minimum_32_chars
+
+      # T?t email th?c t? trong m?i tr??ng CI/CD
+      TICKET_EMAIL_ENABLED: "false"
+
+      # C?ng thanh to?n VNPay Mock cho CI/CD
+      PAYMENT_PROVIDER: VNPAY
+      VNPAY_TMN_CODE: CI_MOCK_TMN_CODE
+      VNPAY_HASH_SECRET: ci_mock_vnpay_hash_secret_key_minimum_32_chars
+      VNPAY_QUERY_IP: 127.0.0.1
+      VNPAY_RETURN_URL: http://localhost:7000/api/v1/payments/vnpay/return
+      VNPAY_FRONTEND_URL: http://localhost:3000
+
+      # Worker ??i so?t chuy?n nh??ng v?
+      RESALE_SETTLEMENT_WORKER_ENABLED: "true"
+    volumes:
+      - backend_cicd_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cicd-network
+
+# -------------------------------------------------------------
+# Ph?n v?ng l?u tr? & M?ng n?i b? ri?ng cho CI/CD
+# -------------------------------------------------------------
+volumes:
+  postgres_cicd_data:
+    driver: local
+  redis_cicd_data:
+    driver: local
+  backend_cicd_uploads:
+    driver: local
+
+networks:
+  cicd-network:
+    driver: bridge
