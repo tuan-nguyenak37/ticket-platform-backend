@@ -1,6 +1,6 @@
 services:
   # -------------------------------------------------------------
-  # 1. C? s? d? li?u PostgreSQL 16
+  # 1. Cơ sở dữ liệu PostgreSQL 16
   # -------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
@@ -9,7 +9,7 @@ services:
     env_file:
       - .env.docker
     ports:
-      - ":5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,7 +21,7 @@ services:
       - ticketverse-network
 
   # -------------------------------------------------------------
-  # 2. B? nh? ??m & Kh?a gi? ch? Redis 7
+  # 2. Bộ nhớ đệm & Khóa giữ chỗ Redis 7
   # -------------------------------------------------------------
   redis:
     image: redis:7-alpine
@@ -29,7 +29,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes
     ports:
-      - ":6379"
+      - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -41,7 +41,7 @@ services:
       - ticketverse-network
 
   # -------------------------------------------------------------
-  # 3. M?y ch? Backend NestJS
+  # 3. Máy chủ Backend NestJS
   # -------------------------------------------------------------
   backend:
     container_name: ticketverse-backend
@@ -50,7 +50,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - ":7000"
+      - "7000:7000"
     env_file:
       - .env.docker
     volumes:
@@ -64,7 +64,7 @@ services:
       - ticketverse-network
 
 # -------------------------------------------------------------
-# Ph?n v?ng l?u tr? b?n v?ng (Volumes) & M?ng n?i b? (Networks)
+# Phân vùng lưu trữ bền vững (Volumes) & Mạng nội bộ (Networks)
 # -------------------------------------------------------------
 volumes:
   postgres_data:

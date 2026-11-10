@@ -286,13 +286,23 @@ export class VnpayClient {
     if (
       body &&
       typeof body === 'object' &&
-      !Array.isArray(body) &&
-      (body as Record<string, unknown>).vnp_ResponseCode === '94'
-    )
-      throw new HttpException(
-        'VNPay đang giới hạn truy vấn lặp. Vui lòng chờ trước khi kiểm tra lại.',
-        429,
-      );
+      !Array.isArray(body)
+    ) {
+      const b = body as Record<string, unknown>;
+      if (b.vnp_ResponseCode === '94') {
+        throw new HttpException(
+          'VNPay đang giới hạn truy vấn lặp. Vui lòng chờ trước khi kiểm tra lại.',
+          429,
+        );
+      }
+      if (b.vnp_ResponseCode === '99' || b.vnp_ResponseCode === '91') {
+        return {
+          vnp_ResponseCode: String(b.vnp_ResponseCode),
+          vnp_Message: String(b.vnp_Message ?? 'Provider error'),
+          vnp_TxnRef: txnRef,
+        };
+      }
+    }
     const result = this.verifyQuery(body);
     if (result.vnp_TxnRef !== txnRef)
       throw new BadRequestException('VNPay query reference mismatch');

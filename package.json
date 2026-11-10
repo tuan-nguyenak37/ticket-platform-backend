@@ -29,7 +29,8 @@
     "docker:logs": "docker compose --env-file .env.docker logs -f backend",
     "cicd:up": "docker compose -f cicd/docker-compose.yml up -d --build",
     "cicd:down": "docker compose -f cicd/docker-compose.yml down -v",
-    "cicd:logs": "docker compose -f cicd/docker-compose.yml logs -f backend"
+    "cicd:logs": "docker compose -f cicd/docker-compose.yml logs -f backend",
+    "seed:sample": "npm run build && node dist/database/seeds/run-sample-seed.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

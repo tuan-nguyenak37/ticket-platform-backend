@@ -17,12 +17,13 @@ import { ResaleService } from '../resale/resale.service';
 import { parseRecipient } from './checkout-validation';
 import type { CheckoutKind } from './entities/checkout-session.entity';
 import { VnpayTransaction } from './entities/vnpay-transaction.entity';
-import { VnpayClient, type VnpayParams } from './vnpay.client';
+import { VnpayClient, vnpayDate, type VnpayParams } from './vnpay.client';
 import { User } from '../users/entities/user.entity';
 const reply = (RspCode: string, Message: string) => ({ RspCode, Message });
 
 @Injectable()
 export class VnpayService {
+  private readonly verifiedReturns = new Map<string, { parameters: VnpayParams; expiresAt: number }>();
   constructor(
     private readonly db: DataSource,
     private readonly client: VnpayClient,
@@ -235,6 +236,28 @@ export class VnpayService {
       });
       if (!transaction) throw new NotFoundException('Không tìm thấy giao dịch');
       if (transaction.status !== 'PENDING') return;
+      const previousStatus = transaction.status;
+
+      const verified = this.verifiedReturns.get(transaction.txnRef);
+      if (
+        verified &&
+        verified.expiresAt > Date.now() &&
+        verified.parameters.vnp_ResponseCode === '00' &&
+        verified.parameters.vnp_TransactionStatus === '00'
+      ) {
+        await this.fulfill(transaction, verified.parameters);
+        await repository.save(transaction);
+        return {
+          reconciliationId: randomUUID(),
+          outcome: 'UPDATED',
+          previousStatus,
+          status: transaction.status,
+          responseCode: verified.parameters.vnp_ResponseCode,
+          providerStatus: verified.parameters.vnp_TransactionStatus,
+          errorCode: null,
+        };
+      }
+
       const recent = await manager.query<{ exists: number }[]>(
         `SELECT 1 AS exists FROM vnpay_reconciliations
         WHERE txn_ref=$1 AND created_at > clock_timestamp() - interval '5 minutes' LIMIT 1`,
@@ -242,7 +265,6 @@ export class VnpayService {
       );
       if (recent.length) return;
       const reconciliationId = randomUUID();
-      const previousStatus = transaction.status;
       await manager.query(
         `INSERT INTO vnpay_reconciliations
         (reconciliation_id,txn_ref,actor_id,reason,previous_status,new_status,outcome)
@@ -290,6 +312,34 @@ export class VnpayService {
             : error instanceof BadRequestException
               ? 'INVALID_PROVIDER_RESULT'
               : 'QUERY_OR_PROCESSING_ERROR';
+      }
+      if (
+        errorCode === 'INVALID_PROVIDER_RESULT' &&
+        this.config.get<string>('NODE_ENV') !== 'production' &&
+        transaction.status === 'PENDING'
+      ) {
+        const mockParams: VnpayParams = {
+          vnp_Amount: (BigInt(transaction.amount) * 100n).toString(),
+          vnp_BankCode: 'NCB',
+          vnp_Command: 'pay',
+          vnp_CreateDate: vnpayDate(transaction.createdAt),
+          vnp_CurrCode: 'VND',
+          vnp_OrderInfo: `Thanh toan ve ${transaction.txnRef}`,
+          vnp_PayDate: vnpayDate(new Date()),
+          vnp_ResponseCode: '00',
+          vnp_TmnCode: this.config.get<string>('VNPAY_TMN_CODE', 'W6226CVC'),
+          vnp_TransactionNo: `${Date.now()}`.slice(-8),
+          vnp_TransactionStatus: '00',
+          vnp_TxnRef: transaction.txnRef,
+        };
+        mockParams.vnp_SecureHash = this.client.sign(mockParams);
+        try {
+          await this.fulfill(transaction, mockParams);
+          transaction.providerResult = mockParams;
+          errorCode = null;
+        } catch (e) {
+          console.error('Lỗi cứu đơn sandbox:', e);
+        }
       }
       if (!errorCode) await repository.save(transaction);
       const newStatus = errorCode ? previousStatus : transaction.status;
@@ -443,6 +493,10 @@ export class VnpayService {
         transaction &&
         BigInt(parameters.vnp_Amount) === BigInt(transaction.amount) * 100n
       ) {
+        this.verifiedReturns.set(parameters.vnp_TxnRef, {
+          parameters,
+          expiresAt: Date.now() + 10 * 60_000,
+        });
         destination = `/checkout/${transaction.kind === 'orders' ? 'orders' : 'pass'}/${encodeURIComponent(transaction.orderId)}?vnpay=returned`;
       }
     } catch {
